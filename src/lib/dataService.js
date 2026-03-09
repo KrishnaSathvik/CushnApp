@@ -146,6 +146,14 @@ function addDays(dateString, days) {
     return date.toISOString().slice(0, 10)
 }
 
+function chunkArray(items, chunkSize = 10) {
+    const chunks = []
+    for (let i = 0; i < items.length; i += chunkSize) {
+        chunks.push(items.slice(i, i + chunkSize))
+    }
+    return chunks
+}
+
 function buildReminderEventsForSubscription(userId, subscription, preferences) {
     if (!subscription?.id || subscription.status !== 'active' || !subscription.renewalDate) {
         return []
@@ -358,13 +366,19 @@ export async function addSubscriptionsBulk(userId, items) {
         status: 'active',
         ...item,
     }, userId))
-    const { data, error } = await supabase
-        .from('subscriptions')
-        .insert(records)
-        .select()
+    const insertedRows = []
 
-    if (error) throw error
-    const subscriptions = (data || []).map(mapSubFromSupabase)
+    for (const batch of chunkArray(records, 10)) {
+        const { data, error } = await supabase
+            .from('subscriptions')
+            .insert(batch)
+            .select()
+
+        if (error) throw error
+        insertedRows.push(...(data || []))
+    }
+
+    const subscriptions = insertedRows.map(mapSubFromSupabase)
     const preferences = await getNotificationPreferences(userId)
     await syncReminderEventsForSubscriptions(userId, subscriptions, preferences)
     return subscriptions

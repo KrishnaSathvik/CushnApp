@@ -38,6 +38,14 @@ function saveDashboardCache(userId, payload) {
     }
 }
 
+function sortSubscriptionsByRenewalDate(items) {
+    return [...items].sort((a, b) => {
+        const left = a?.renewalDate ? new Date(a.renewalDate).getTime() : Number.MAX_SAFE_INTEGER
+        const right = b?.renewalDate ? new Date(b.renewalDate).getTime() : Number.MAX_SAFE_INTEGER
+        return left - right
+    })
+}
+
 export function SubscriptionsProvider({ children }) {
     const { session, isAuthenticated, isLoading: isAuthLoading } = useAuth()
     const userId = isAuthenticated ? session?.user?.id : null
@@ -179,8 +187,22 @@ export function SubscriptionsProvider({ children }) {
             await refresh()
         },
         addSubscriptionsBulk: async (items) => {
-            await dsAddBulk(userId, items)
-            await refresh()
+            const inserted = await dsAddBulk(userId, items)
+            setSubscriptions((prev) => {
+                const next = sortSubscriptionsByRenewalDate([...prev, ...inserted])
+                const nextTotal = next
+                    .filter((sub) => sub.status === 'active')
+                    .reduce((sum, sub) => sum + normalizeToMonthly(sub.amount, sub.cycle), 0)
+                setMonthlyTotal(nextTotal)
+                saveDashboardCache(userId, {
+                    subscriptions: next,
+                    categories,
+                    monthlyTotal: nextTotal,
+                })
+                return next
+            })
+            void refresh({ soft: true })
+            return inserted
         },
         updateSubscription: async (id, data) => {
             await dsUpdate(userId, id, data)
