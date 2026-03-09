@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import AppSurfaceCard from "./AppSurfaceCard";
-
 const DOMAINS = {
   Netflix: "netflix.com",
   Spotify: "spotify.com",
@@ -13,33 +12,12 @@ const DOMAINS = {
 
 function PreviewLogo({ name, size = 18, radius = 5 }) {
   const { T } = useTheme();
-  const [err, setErr] = useState(false);
+  const [failed, setFailed] = useState(false);
   const domain = DOMAINS[name];
-  const colors = [T.semDanger, T.semSuccess, T.semInfo, T.accentPrimary, T.semCloud, T.semWarning];
-  const color = colors[Object.keys(DOMAINS).indexOf(name) % 6] || T.accentPrimary;
-
-  if (err || !domain) {
-    return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: radius,
-          background: color + "22",
-          border: `1px solid ${color}44`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: size * 0.4,
-          fontWeight: 700,
-          color,
-          flexShrink: 0,
-        }}
-      >
-        {name[0]}
-      </div>
-    );
-  }
+  const fallbackColors = [T.semDanger, T.semSuccess, T.semInfo, T.accentPrimary, T.semCloud, T.semWarning];
+  const fallbackColor = fallbackColors[Math.max(name.length - 1, 0) % fallbackColors.length] || T.accentPrimary;
+  const color = fallbackColor;
+  const src = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null;
 
   return (
     <div
@@ -47,22 +25,30 @@ function PreviewLogo({ name, size = 18, radius = 5 }) {
         width: size,
         height: size,
         borderRadius: radius,
-        background: T.bgElevated,
-        border: `1px solid ${T.border}`,
+        background: failed || !src ? `${color}18` : T.bgElevated,
+        border: failed || !src ? `1px solid ${color}33` : `1px solid ${T.border}`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        overflow: "hidden",
         flexShrink: 0,
-        padding: 3,
+        overflow: "hidden",
+        padding: failed || !src ? 0 : 3,
+        fontSize: size * 0.42,
+        fontWeight: 800,
+        color,
+        letterSpacing: -0.2,
       }}
     >
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-        alt={name}
-        onError={() => setErr(true)}
-        style={{ width: "100%", height: "100%", objectFit: "contain" }}
-      />
+      {failed || !src ? (
+        name[0]
+      ) : (
+        <img
+          src={src}
+          alt={name}
+          onError={() => setFailed(true)}
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      )}
     </div>
   );
 }
@@ -70,38 +56,38 @@ function PreviewLogo({ name, size = 18, radius = 5 }) {
 const VARIANTS = {
   landing: {
     metrics: [
-      { label: "Active", value: "18" },
-      { label: "Due 7d", value: "3" },
-      { label: "Monthly", value: "$214" },
+      { label: "Active", value: "12" },
+      { label: "Due soon", value: "4" },
+      { label: "Monthly", value: "$186" },
     ],
-    trendLabel: "MONTHLY TREND",
-    trendValue: "+12.7%",
+    trendLabel: "RENEWAL OUTLOOK",
+    trendValue: "4 due this week",
     trendStops: ["semInfo", "accentPrimary"],
     trendPath: "M0 64 L40 58 L80 62 L120 50 L160 52 L200 40 L240 28 L260 24",
     trendDotColor: "accentPrimary",
     listLabel: "UPCOMING RENEWALS",
     rows: [
-      { name: "Netflix", amount: "$15.99", meta: "Mar 09" },
-      { name: "Spotify", amount: "$10.99", meta: "Mar 11" },
-      { name: "Claude Pro", amount: "$20.00", meta: "Mar 15" },
+      { name: "Netflix", amount: "$15.99", meta: "Due today" },
+      { name: "Spotify", amount: "$10.99", meta: "In 2 days" },
+      { name: "Claude Pro", amount: "$20.00", meta: "In 6 days" },
     ],
   },
   auth: {
     metrics: [
-      { label: "Bills at risk", value: "2" },
-      { label: "Trials ending", value: "1" },
-      { label: "Save potential", value: "$29" },
+      { label: "Active", value: "12" },
+      { label: "Next due", value: "Today" },
+      { label: "Budget left", value: "$84" },
     ],
-    trendLabel: "BILL HEALTH SCORE",
-    trendValue: "82 / 100",
+    trendLabel: "SYNCED OVERVIEW",
+    trendValue: "Budget + renewals aligned",
     trendStops: ["accentPrimary", "semSuccess"],
-    trendPath: "M0 66 L36 64 L72 63 L108 58 L144 52 L180 42 L216 34 L252 28",
+    trendPath: "M0 68 L36 66 L72 61 L108 57 L144 49 L180 42 L216 37 L252 33",
     trendDotColor: "semSuccess",
-    listLabel: "SPEND DISTRIBUTION",
+    listLabel: "SPEND BY CATEGORY",
     rows: [
-      { name: "Entertainment", amount: "46%", meta: 46, colorKey: "semDanger", bar: true },
-      { name: "Productivity", amount: "31%", meta: 31, colorKey: "accentPrimary", bar: true },
-      { name: "Dev Tools", amount: "23%", meta: 23, colorKey: "semInfo", bar: true },
+      { name: "Entertainment", amount: "38%", meta: 38, colorKey: "semDanger", bar: true },
+      { name: "Productivity", amount: "34%", meta: 34, colorKey: "accentPrimary", bar: true },
+      { name: "Utilities", amount: "28%", meta: 28, colorKey: "semInfo", bar: true },
     ],
   },
 };
@@ -145,7 +131,7 @@ export default function DashboardPreviewMock({ compact = false, variant = "landi
               fontWeight: 700,
             }}
           >
-            SUBTRACKR DASHBOARD
+            CUSHN DASHBOARD
           </span>
         </div>
         <span

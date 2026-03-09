@@ -277,7 +277,7 @@ const PreviewPanel = ({ mode }) => {
 
   return (
     <div
-      className="hidden xl:flex flex-1 flex-col justify-center px-8 2xl:px-10 relative overflow-hidden"
+      className="hidden xl:flex flex-1 flex-col justify-center px-8 2xl:px-10 pt-10 pb-8 2xl:pt-12 relative overflow-hidden"
       style={{
         background: `linear-gradient(135deg, ${T.bgSurface} 0%, ${T.bgBase} 100%)`,
         borderLeft: `1px solid ${T.border}`,
@@ -339,9 +339,9 @@ export function AuthSplitLayout({ children, mode }) {
           }}
         />
 
-        <PageShell width="default" className="relative z-10 flex h-full" style={{ minHeight: "100vh" }}>
+        <PageShell width="default" className="relative z-10 flex h-full xl:items-stretch" style={{ minHeight: "100vh" }}>
           <div
-            className="w-full xl:w-[500px] shrink-0 flex flex-col justify-center px-4 sm:px-6 md:px-8 py-8 overflow-y-auto lg:border-r"
+            className="w-full xl:w-[560px] 2xl:w-[600px] shrink-0 flex flex-col justify-center xl:justify-start px-4 sm:px-6 md:px-8 py-8 xl:pt-10 xl:pb-8 overflow-y-auto lg:border-r"
             style={{
               borderColor: T.border,
               background: `${T.bgBase}e6`,

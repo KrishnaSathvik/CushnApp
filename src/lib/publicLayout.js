@@ -1,9 +1,9 @@
 export const PUBLIC_LAYOUT = {
   headerHeight: 56,
-  maxWidthWide: 1100,
-  maxWidth: 1040,
-  maxWidthNarrow: 900,
-  legalMaxWidth: 980,
+  maxWidthWide: 1360,
+  maxWidth: 1280,
+  maxWidthNarrow: 1080,
+  legalMaxWidth: 1120,
   pagePaddingX: 24,
 }
 

@@ -315,8 +315,6 @@ export default function AddScreen() {
                         padding: 22,
                         background: T.bgSurface,
                         border: `1px solid ${T.border}`,
-                        maxWidth: 1120,
-                        margin: '0 auto',
                         width: '100%',
                     }}
                 >
@@ -379,8 +377,6 @@ export default function AddScreen() {
                             flex: 1,
                             paddingBottom: 120,
                             width: '100%',
-                            maxWidth: 1120,
-                            margin: '0 auto',
                             display: 'flex',
                             flexDirection: 'column',
                         }}
@@ -516,8 +512,6 @@ export default function AddScreen() {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: 10,
-                                maxWidth: 1120,
-                                margin: '0 auto',
                                 width: '100%',
                                 borderRadius: 18,
                             }}
@@ -618,8 +612,6 @@ export default function AddScreen() {
                         className="dashboard-stack"
                         style={{
                             paddingBottom: 120,
-                            maxWidth: 1120,
-                            margin: '0 auto',
                             width: '100%',
                         }}
                     >

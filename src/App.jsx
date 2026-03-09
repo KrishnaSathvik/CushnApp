@@ -120,6 +120,27 @@ function OnboardingGate({ children }) {
   return children;
 }
 
+function ScrollManager() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.slice(1);
+      const target = document.getElementById(id);
+      if (target) {
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ block: "start", behavior: "auto" });
+        });
+        return;
+      }
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
+}
+
 function AppShell() {
   const location = useLocation();
   const { isLoggedIn } = useAuth();
@@ -132,6 +153,7 @@ function AppShell() {
 
   return (
     <div className="min-h-dvh bg-bgBase text-fgHigh">
+      <ScrollManager />
       {showDashboardHeader && <DashboardHeader key={location.pathname} />}
       <main>
         <Suspense fallback={<PageLoader />}>

@@ -7,6 +7,7 @@ import {
   Mic,
   Calendar,
   Bell,
+  Paperclip,
   ArrowRight,
   ChevronRight,
 } from "lucide-react";
@@ -135,10 +136,16 @@ function TemplateFeaturesV1() {
       color: T.semCloud,
     },
     {
+      icon: Paperclip,
+      title: "Review statement imports",
+      desc: "Upload PDF, CSV, XLSX, TXT, or image files and confirm findings before anything is added.",
+      color: T.semInfo,
+    },
+    {
       icon: Calendar,
       title: "Track upcoming renewals",
       desc: "See what is due next in a calendar-first timeline before charges hit.",
-      color: T.semInfo,
+      color: T.accentPrimary,
     },
     {
       icon: PieChart,
