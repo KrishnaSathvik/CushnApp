@@ -24,6 +24,16 @@ const STOP_WORDS = new Set([
     'app',
     'services',
     'service',
+    'bucks',
+    'buck',
+    'lol',
+    'forgot',
+    'forget',
+    'still',
+    'charging',
+    'charge',
+    'charged',
+    'on',
 ])
 
 function normalizeEvidenceText(text) {
@@ -348,7 +358,7 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
             .replace(/\$?\b\d+(?:\.\d{1,2})?\b\$?/g, '') // remove numbers/prices
             .replace(/(monthly|annual|yearly|weekly|quarterly|\/mo|every|month(?! end)|end of month|month end)/gi, '') // remove cycle words and 'month end'
             .replace(/\b([1-9]|[12][0-9]|3[01])(?:st|nd|rd|th)?\b/gi, '') // remove ordinal days
-            .replace(/(subscription|plan|account|app|fee|\bfor\b|\bof\b)/gi, '') // remove conversational fillers
+            .replace(/(subscription|plan|account|app|fee|\bfor\b|\bof\b|\bon\b|\bbucks?\b|\blol\b|\bforgot\b|\bforget\b|\bstill\b|\bcharging\b|\bcharged\b)/gi, '') // remove conversational fillers
             .replace(/\b(autopay|auto pay|autopmt|autopayment|payment|debit|credit|card|visa|mastercard|mc|amex|discover|ach|withdrawal|purchase|pos|checkcard)\b/gi, '')
             .replace(/(entertainment|dev\s*tools?|health|productivity|cloud|news|other)/gi, '') // remove category hints
             .replace(/\s+/g, ' ')
@@ -368,8 +378,13 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
             sub.rawName = 'Unknown Subscription';
         }
 
-        return enrichSubscriptionCandidate(sub);
-    }).filter(s => s.name && s.amount > 0);
+        const enriched = enrichSubscriptionCandidate(sub)
+
+        return {
+            ...enriched,
+            amountMissing: !(Number.isFinite(enriched.amount) && enriched.amount > 0),
+        }
+    }).filter((s) => s.name && (s.amount > 0 || (s.amountMissing && s.name !== 'Unknown Subscription' && (s.vendorDomain || s.vendorCanonicalName || s.vendorConfidence >= 0.75))));
 }
 
 // Category inference from service name

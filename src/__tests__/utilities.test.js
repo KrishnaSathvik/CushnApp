@@ -366,6 +366,48 @@ describe('localParse fallback parsing', () => {
         ])
         expect(['openai.com', 'chatgpt.com']).toContain(result[0].vendorDomain)
     })
+
+    it('cleans conversational filler words from messy notes', () => {
+        const result = localParse(
+            'claude pro 20 bucks every month, gym 49.99 on 15th, audible still charging lol, forgot spotify family',
+            '2026-03-09',
+        )
+
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                name: 'Claude Pro',
+                amount: 20,
+                cycle: 'monthly',
+                category: 'Productivity',
+            }),
+            expect.objectContaining({
+                name: 'Gym',
+                amount: 49.99,
+                renewalDate: '2026-03-15',
+                category: 'Health',
+            }),
+        ]))
+    })
+
+    it('keeps likely vendor drafts even when the amount is missing', () => {
+        const result = localParse(
+            'audible still charging lol, forgot spotify family',
+            '2026-03-09',
+        )
+
+        expect(result).toEqual([
+            expect.objectContaining({
+                name: 'Audible',
+                amount: 0,
+                amountMissing: true,
+            }),
+            expect.objectContaining({
+                name: 'Spotify Family',
+                amount: 0,
+                amountMissing: true,
+            }),
+        ])
+    })
 })
 
 // ─── constants ───────────────────────────────────────────────────────────────

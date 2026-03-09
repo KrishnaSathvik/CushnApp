@@ -55,6 +55,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
     const totalMonthly = subs.reduce((sum, s) => {
         return sum + normalizeToMonthly(s.amount, s.cycle)
     }, 0)
+    const hasInvalidDrafts = subs.some((sub) => !Number.isFinite(sub.amount) || sub.amount <= 0)
 
     const getCatColor = (cat) => {
         // Use database category color if available, otherwise fall back to tokens
@@ -109,6 +110,11 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                         <div className="font-mono mt-0.5" style={{ fontSize: 10, color: T.fgSubtle }}>
                             AI detected from your input
                         </div>
+                        {hasInvalidDrafts && (
+                            <div className="font-mono mt-1" style={{ fontSize: 10, color: T.semWarning }}>
+                                Fill in missing amounts before confirming.
+                            </div>
+                        )}
                     </div>
                     <div className="flex gap-2 items-center">
                         {subs.length > 0 && (
@@ -130,6 +136,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                         )}
                         <button
                             onClick={() => {
+                                if (hasInvalidDrafts) return
                                 setIsConfirming(true)
                                 const finalized = [...subs]
                                 setSubs([])
@@ -138,16 +145,16 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                     onConfirm(finalized)
                                 }, finalized.length * 50 + 300)
                             }}
-                            disabled={subs.length === 0}
+                            disabled={subs.length === 0 || hasInvalidDrafts}
                             className="interactive-btn cursor-pointer border-none"
                             style={{
-                                background: subs.length > 0 ? T.accentPrimary : T.fgDivider,
+                                background: subs.length > 0 && !hasInvalidDrafts ? T.accentPrimary : T.fgDivider,
                                 color: '#fff',
                                 borderRadius: 12,
                                 padding: '7px 14px',
                                 fontSize: 12,
                                 fontWeight: 700,
-                                opacity: subs.length > 0 ? 1 : 0.5,
+                                opacity: subs.length > 0 && !hasInvalidDrafts ? 1 : 0.5,
                             }}
                         >
                             Confirm All
@@ -321,7 +328,9 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
 
                                 {/* Tags */}
                                 <div className="flex gap-1.5 flex-wrap">
-                                    <Chip color={T.accentPrimary} size={9}>{formatCurrency(sub.amount, currency)}</Chip>
+                                    <Chip color={sub.amount > 0 ? T.accentPrimary : T.semWarning} size={9}>
+                                        {sub.amount > 0 ? formatCurrency(sub.amount, currency) : 'Amount missing'}
+                                    </Chip>
                                     <Chip color={getCatColor(sub.category)} size={9}>{sub.category}</Chip>
                                     <Chip color={T.fgSubtle} size={9}>{sub.cycle}</Chip>
                                     {sub.vendorDomain && (
