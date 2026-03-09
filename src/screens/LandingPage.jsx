@@ -250,7 +250,7 @@ function TemplateFeaturesV1() {
           <PageIntro
             eyebrow="Features"
             title="What you can do from one dashboard"
-            subtitle="Everything below points to a distinct part of the product instead of repeating the same flow in different words."
+            subtitle="Capture subscriptions faster, review what AI finds, and stay ahead of renewals, budgets, and recurring spend from one place."
             titleStyle={{ fontSize: 26, letterSpacing: -0.5 }}
           />
         </div>
