@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirm your Cushn account</title>
+  </head>
+
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      font-family:
+        -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto,
+        Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #111827;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      style="background-color: #000000; padding: 40px 20px"
+    >
+      <tr>
+        <td align="center">
+          <table
+            role="presentation"
+            width="100%"
+            cellspacing="0"
+            cellpadding="0"
+            style="
+              max-width: 600px;
+              background-color: #ffffff;
+              text-align: left;
+            "
+          >
+            <tr>
+              <td style="padding: 40px 50px">
+                <!-- Header Logo -->
+                <div style="text-align: center; margin-bottom: 40px">
+                  <span
+                    style="
+                      font-size: 28px;
+                      font-weight: 800;
+                      letter-spacing: -0.05em;
+                      color: #111827;
+                    "
+                    >Cushn</span
+                  >
+                </div>
+
+                <!-- Body Text -->
+                <p
+                  style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  "
+                >
+                  Hey {{ if .Data.full_name }}{{ .Data.full_name }}{{ else }}there{{ end }} 👋
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  "
+                >
+                  Tracking your subscriptions is one of the most effective ways
+                  to stay committed to your budget and reduce unnecessary
+                  spending.
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  "
+                >
+                  At
+                  <span style="background-color: #fef08a; padding: 2px 4px"
+                    >Cushn</span
+                  >, we've made it easy to track your renewals and keep your
+                  recurring costs aligned.
+                </p>
+
+                <h3
+                  style="
+                    margin: 32px 0 16px;
+                    font-size: 18px;
+                    font-weight: 800;
+                    color: #111827;
+                  "
+                >
+                  🎯 How to Get Started:
+                </h3>
+                <ol
+                  style="
+                    margin: 0 0 24px;
+                    padding-left: 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  "
+                >
+                  <li style="margin-bottom: 8px">
+                    Click the button below to confirm your account securely.
+                  </li>
+                  <li style="margin-bottom: 8px">
+                    Open your dashboard and start capturing your recurring
+                    expenses.
+                  </li>
+                  <li style="margin-bottom: 8px">
+                    Let Cushn handle your renewals and future alerts
+                    automatically.
+                  </li>
+                </ol>
+
+                <h3
+                  style="
+                    margin: 32px 0 16px;
+                    font-size: 18px;
+                    font-weight: 800;
+                    color: #111827;
+                  "
+                >
+                  💡 See Your Savings
+                </h3>
+                <p
+                  style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  "
+                >
+                  See exactly where your money goes every month. Let's make
+                  every dollar count!
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  "
+                >
+                  — The
+                  <span style="background-color: #fef08a; padding: 2px 4px"
+                    >Cushn</span
+                  >
+                  team
+                </p>
+
+                <!-- CTA Button -->
+                <div
+                  style="
+                    text-align: center;
+                    margin-bottom: 32px;
+                    margin-top: 40px;
+                  "
+                >
+                  <a
+                    href="{{ .ConfirmationURL }}"
+                    style="
+                      display: inline-block;
+                      padding: 12px 24px;
+                      background-color: #8b5cf6;
+                      color: #ffffff;
+                      text-decoration: none;
+                      font-weight: 700;
+                      font-size: 15px;
+                      border-radius: 8px;
+                    "
+                  >
+                    Confirm Your Account
+                  </a>
+                </div>
+
+                <!-- Divider -->
+                <hr
+                  style="
+                    border: none;
+                    border-top: 1px solid #e5e7eb;
+                    margin: 40px 0 32px;
+                  "
+                />
+
+                <!-- Footer -->
+                <div style="text-align: center">
+                  <div style="margin-bottom: 16px">
+                    <span
+                      style="
+                        font-size: 20px;
+                        font-weight: 800;
+                        letter-spacing: -0.05em;
+                        color: #111827;
+                      "
+                      >Cushn</span
+                    >
+                  </div>
+
+                  <p style="margin: 0; font-size: 11px">
+                    <a
+                      href="{{ .SiteURL }}/preferences"
+                      style="color: #14b8a6; text-decoration: underline"
+                      >Manage preferences</a
+                    >
+                  </p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

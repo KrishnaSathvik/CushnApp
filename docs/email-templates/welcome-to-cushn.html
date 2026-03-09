@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Cushn</title>
+</head>
+
+<body style="
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      font-family:
+        -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto,
+        Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #111827;
+    ">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+    style="background-color: #000000; padding: 40px 20px">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="
+              max-width: 600px;
+              background-color: #ffffff;
+              text-align: left;
+            ">
+          <tr>
+            <td style="padding: 40px 50px">
+              <div style="text-align: center; margin-bottom: 40px">
+                <span style="
+                      font-size: 28px;
+                      font-weight: 800;
+                      letter-spacing: -0.05em;
+                      color: #111827;
+                    ">Cushn</span>
+              </div>
+
+              <p style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  ">
+                Hey {{ if .Data.full_name }}{{ .Data.full_name }}{{ else }}there{{ end }} 👋
+              </p>
+
+              <p style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  ">
+                Welcome to
+                <span style="background-color: #fef08a; padding: 2px 4px">Cushn</span>. Your account is ready, and you
+                can now start managing your
+                subscriptions in one place with a cleaner command-center
+                workflow.
+              </p>
+
+              <p style="
+                    margin: 0 0 24px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  ">
+                Cushn helps you stay ahead of recurring spend, spot upcoming
+                renewals earlier, and keep your budget aligned without digging
+                through old emails and statements.
+              </p>
+
+              <h3 style="
+                    margin: 32px 0 16px;
+                    font-size: 18px;
+                    font-weight: 800;
+                    color: #111827;
+                  ">
+                ✨ What you can do now
+              </h3>
+              <ol style="
+                    margin: 0 0 24px;
+                    padding-left: 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  ">
+                <li style="margin-bottom: 8px">
+                  Add subscriptions by text or voice.
+                </li>
+                <li style="margin-bottom: 8px">
+                  Track renewal dates in your dashboard and calendar.
+                </li>
+                <li style="margin-bottom: 8px">
+                  Turn on in-app and email reminders for upcoming charges.
+                </li>
+                <li style="margin-bottom: 8px">
+                  Watch your recurring spend against your monthly budget.
+                </li>
+              </ol>
+
+              <p style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  ">
+                Start with the dashboard, add your first few services, and
+                let Cushn keep the renewal timeline visible from there.
+              </p>
+
+              <p style="
+                    margin: 0 0 20px;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #111827;
+                  ">
+                — The
+                <span style="background-color: #fef08a; padding: 2px 4px">Cushn</span>
+                team
+              </p>
+
+              <div style="
+                    text-align: center;
+                    margin-bottom: 32px;
+                    margin-top: 40px;
+                  ">
+                <a href="{{ .SiteURL }}/" style="
+                      display: inline-block;
+                      padding: 12px 24px;
+                      background-color: #8b5cf6;
+                      color: #ffffff;
+                      text-decoration: none;
+                      font-weight: 700;
+                      font-size: 15px;
+                      border-radius: 8px;
+                    ">
+                  Open Cushn
+                </a>
+              </div>
+
+              <hr style="
+                    border: none;
+                    border-top: 1px solid #e5e7eb;
+                    margin: 40px 0 32px;
+                  " />
+
+              <div style="text-align: center">
+                <div style="margin-bottom: 16px">
+                  <span style="
+                        font-size: 20px;
+                        font-weight: 800;
+                        letter-spacing: -0.05em;
+                        color: #111827;
+                      ">Cushn</span>
+                </div>
+
+                <p style="margin: 0; font-size: 11px">
+                  <a href="{{ .SiteURL }}/preferences" style="color: #14b8a6; text-decoration: underline">Manage
+                    preferences</a>
+                </p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>

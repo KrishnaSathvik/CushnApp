@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="description"
+    content="Track subscriptions, renewal dates, budgets, and spending with AI-assisted entry and reminders." />
+  <meta name="robots" content="index,follow" />
+  <meta property="og:title" content="Cushn | Your spending cushion" />
+  <meta property="og:description"
+    content="Track subscriptions, renewal dates, budgets, and spending with AI-assisted entry and reminders." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Cushn | Your spending cushion" />
+  <meta name="twitter:description"
+    content="Track subscriptions, renewal dates, budgets, and spending with AI-assisted entry and reminders." />
+  <meta name="twitter:image" content="/og-image.png" />
+  <title>Cushn | Your spending cushion</title>
+  <script>
+    (function () {
+      var themePreference = localStorage.getItem('cushn_theme') || localStorage.getItem('subtrackr_theme') || 'system';
+      var systemPrefersDark = typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : true;
+      var theme = themePreference === 'system'
+        ? (systemPrefersDark ? 'dark' : 'light')
+        : themePreference;
+      var isLight = theme === 'light';
+      var bg = isLight ? '#ffffff' : '#0a0d14';
+      var fg = isLight ? '#1f2937' : '#f5f7fb';
+      var themeColor = document.querySelector('meta[name="theme-color"]');
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.style.backgroundColor = bg;
+      document.documentElement.style.color = fg;
+      if (themeColor) themeColor.setAttribute('content', bg);
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!document.body) return;
+        document.body.style.backgroundColor = bg;
+        document.body.style.color = fg;
+      });
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
