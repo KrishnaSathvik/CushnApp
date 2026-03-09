@@ -2,6 +2,10 @@
 
 Use this checklist before enabling production email reminders.
 
+Reference:
+
+- [Email Reminders](./EMAIL_REMINDERS.md)
+
 ## 1) Resend account and domain
 
 - Create/upgrade your Resend account.

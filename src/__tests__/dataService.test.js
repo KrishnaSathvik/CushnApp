@@ -8,6 +8,7 @@ const mocked = vi.hoisted(() => ({
   dexieGetAll: vi.fn(),
   dexieGetById: vi.fn(),
   dexieAdd: vi.fn(),
+  dexieAddBulk: vi.fn(),
   dexieUpdate: vi.fn(),
   dexieDelete: vi.fn(),
   dexiePause: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('../db', () => ({
   getAllSubscriptions: mocked.dexieGetAll,
   getSubscriptionById: mocked.dexieGetById,
   addSubscription: mocked.dexieAdd,
+  addSubscriptionsBulk: mocked.dexieAddBulk,
   updateSubscription: mocked.dexieUpdate,
   deleteSubscription: mocked.dexieDelete,
   pauseSubscription: mocked.dexiePause,
@@ -54,18 +56,22 @@ import {
   getNotificationPreferences,
   getInAppNotificationEvents,
   markNotificationEventHandled,
+  addSubscription,
+  saveNotificationPreferences,
 } from '../lib/dataService'
 
 function makeQuery(result, method = 'single') {
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
+    in: vi.fn(() => query),
     lte: vi.fn(() => query),
     order: vi.fn(() => query),
     limit: vi.fn(() => query),
     update: vi.fn(() => query),
     upsert: vi.fn(() => query),
     insert: vi.fn(() => query),
+    delete: vi.fn(() => query),
     single: vi.fn(),
     maybeSingle: vi.fn(),
   }
@@ -78,6 +84,7 @@ describe('dataService cloud/guest behavior', () => {
     mocked.isConfigured = false
     mocked.from.mockReset()
     mocked.dexieGetAll.mockReset()
+    mocked.dexieAddBulk.mockReset()
     mocked.dexieAddCategory.mockReset()
     mocked.dexieUpdateBudget.mockReset()
   })
@@ -246,5 +253,158 @@ describe('dataService cloud/guest behavior', () => {
       id: 'evt-1',
       status: 'sent',
     }))
+  })
+
+  it('queues reminder events immediately when adding a cloud subscription', async () => {
+    mocked.isConfigured = true
+
+    const insertSubscriptionQuery = makeQuery({
+      data: {
+        id: 'sub-1',
+        name: 'Netflix',
+        amount: '15.99',
+        currency: 'USD',
+        cycle: 'monthly',
+        category_id: 'cat-1',
+        start_date: null,
+        renewal_date: '2026-03-10',
+        status: 'active',
+        notes: '',
+        icon: '',
+        raw_input: '',
+        vendor_domain: null,
+        vendor_confidence: null,
+        vendor_match_type: null,
+        created_at: '2026-03-09T00:00:00.000Z',
+      },
+      error: null,
+    })
+
+    const preferencesQuery = makeQuery({
+      data: {
+        user_id: 'user-1',
+        in_app_enabled: true,
+        email_enabled: true,
+        days_before: [1, 3],
+        timezone: 'UTC',
+        updated_at: '2026-03-09T00:00:00.000Z',
+      },
+      error: null,
+    })
+
+    const clearQueuedQuery = makeQuery({ data: null, error: null }, 'in')
+    const reminderEventsQuery = makeQuery({ data: null, error: null }, 'upsert')
+
+    mocked.from
+      .mockReturnValueOnce(insertSubscriptionQuery)
+      .mockReturnValueOnce(preferencesQuery)
+      .mockReturnValueOnce(clearQueuedQuery)
+      .mockReturnValueOnce(reminderEventsQuery)
+
+    await addSubscription('user-1', {
+      name: 'Netflix',
+      amount: 15.99,
+      currency: 'USD',
+      cycle: 'monthly',
+      categoryId: 'cat-1',
+      renewalDate: '2026-03-10',
+    })
+
+    expect(clearQueuedQuery.delete).toHaveBeenCalledTimes(1)
+    expect(clearQueuedQuery.in).toHaveBeenCalledWith('subscription_id', ['sub-1'])
+    expect(reminderEventsQuery.upsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          subscription_id: 'sub-1',
+          reminder_date: '2026-03-09',
+          channel: 'in_app',
+          status: 'queued',
+        }),
+        expect.objectContaining({
+          subscription_id: 'sub-1',
+          reminder_date: '2026-03-09',
+          channel: 'email',
+          status: 'queued',
+        }),
+      ]),
+      { onConflict: 'user_id,subscription_id,renewal_date,reminder_date,channel' },
+    )
+  })
+
+  it('resyncs queued reminder events when cloud reminder preferences change', async () => {
+    mocked.isConfigured = true
+
+    const prefsUpsertQuery = makeQuery({
+      data: {
+        user_id: 'user-1',
+        in_app_enabled: true,
+        email_enabled: true,
+        days_before: [0, 2],
+        timezone: 'UTC',
+        updated_at: '2026-03-09T00:00:00.000Z',
+      },
+      error: null,
+    })
+
+    const subsQuery = makeQuery({
+      data: [{
+        id: 'sub-1',
+        name: 'Netflix',
+        amount: '15.99',
+        currency: 'USD',
+        cycle: 'monthly',
+        category_id: 'cat-1',
+        start_date: null,
+        renewal_date: '2026-03-10',
+        status: 'active',
+        notes: '',
+        icon: '',
+        raw_input: '',
+        vendor_domain: null,
+        vendor_confidence: null,
+        vendor_match_type: null,
+        created_at: '2026-03-09T00:00:00.000Z',
+      }],
+      error: null,
+    }, 'order')
+
+    const deleteQueuedQuery = makeQuery({ data: null, error: null }, 'in')
+    const upsertQueuedQuery = makeQuery({ data: null, error: null }, 'upsert')
+
+    mocked.from
+      .mockReturnValueOnce(prefsUpsertQuery)
+      .mockReturnValueOnce(subsQuery)
+      .mockReturnValueOnce(deleteQueuedQuery)
+      .mockReturnValueOnce(upsertQueuedQuery)
+
+    const result = await saveNotificationPreferences('user-1', {
+      inAppEnabled: true,
+      emailEnabled: true,
+      daysBefore: [0, 2],
+      timezone: 'UTC',
+    })
+
+    expect(deleteQueuedQuery.delete).toHaveBeenCalledTimes(1)
+    expect(deleteQueuedQuery.in).toHaveBeenCalledWith('subscription_id', ['sub-1'])
+    expect(upsertQueuedQuery.upsert).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          subscription_id: 'sub-1',
+          reminder_date: '2026-03-10',
+          channel: 'in_app',
+        }),
+        expect.objectContaining({
+          subscription_id: 'sub-1',
+          reminder_date: '2026-03-08',
+          channel: 'email',
+        }),
+      ]),
+      { onConflict: 'user_id,subscription_id,renewal_date,reminder_date,channel' },
+    )
+    expect(result).toMatchObject({
+      inAppEnabled: true,
+      emailEnabled: true,
+      daysBefore: [0, 2],
+    })
   })
 })

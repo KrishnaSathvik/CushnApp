@@ -12,6 +12,17 @@ import { formatCurrency } from '../lib/formatCurrency'
 import { normalizeToMonthly } from '../lib/normalizeAmount'
 import { getBillTypeInfo, resolveBillTypeKey } from '../lib/billTypes'
 
+function formatDueDate(dateString) {
+    if (!dateString) return ''
+    const date = new Date(`${dateString}T00:00:00`)
+    if (Number.isNaN(date.getTime())) return dateString
+    return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    })
+}
+
 function getIconComp(name) {
     switch (name || '') {
         case 'film': return Film
@@ -320,7 +331,7 @@ export default function HomeScreen() {
                                     </div>
                                 ) : (
                                     <div className="surface-card-muted" style={{ overflow: 'hidden' }}>
-                                        {dueSoonSubs.map(({ sub }, index) => (
+                                        {dueSoonSubs.map(({ sub, days }, index) => (
                                             <div
                                                 key={`due-${sub.id}`}
                                                 style={{
@@ -333,7 +344,7 @@ export default function HomeScreen() {
                                                     subscription={sub}
                                                     categoryName={getCategoryName(sub.categoryId)}
                                                     categoryColor={getCategoryColorById(sub.categoryId)}
-                                                    daysLeft={daysUntilRenewal(sub.renewalDate)}
+                                                    daysLeft={days}
                                                     onClick={() => navigate(`/detail/${sub.id}`)}
                                                     onDelete={handleDelete}
                                                     onPause={handlePause}
@@ -341,6 +352,16 @@ export default function HomeScreen() {
                                                     variant="grouped"
                                                     groupBy="type"
                                                 />
+                                                <div
+                                                    style={{
+                                                        padding: '0 18px 14px',
+                                                        marginTop: -6,
+                                                        fontSize: 12,
+                                                        color: T.fgMedium,
+                                                    }}
+                                                >
+                                                    Due on <span className="font-mono" style={{ color: T.fgHigh }}>{formatDueDate(sub.renewalDate)}</span>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

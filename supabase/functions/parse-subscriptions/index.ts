@@ -1,3 +1,9 @@
+import {
+  coerceFutureRenewalDate,
+  normalizeCategory,
+  normalizeCycle,
+} from '../../../shared/parseNormalization.ts'
+
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 
 const corsHeaders = {
@@ -6,132 +12,176 @@ const corsHeaders = {
 }
 
 const SYSTEM_PROMPT = `
-You are a financial subscription parser.
+You are an expert financial subscription and recurring payment parser.
 
-Your job is to extract structured subscription data from natural language text.
+Your job is to extract ONLY recurring subscription or bill charges from text — whether it's a bank statement export (CSV/PDF), a manual description, or a list of services the user pays for.
 
-The user may describe subscriptions casually like:
+===== WHEN READING BANK STATEMENTS =====
+
+Bank statement text may include every transaction. You must:
+1. IGNORE all one-time purchases (restaurants, retail shopping, ATM withdrawals, transfers, refunds, etc.)
+2. ONLY extract transactions that are clearly recurring subscriptions or recurring bills.
+
+Strong signals a charge is a subscription or recurring bill:
+- Known streaming/SaaS services: Netflix, Spotify, Hulu, Disney+, Apple, Google, Amazon Prime, etc.
+- The word "subscription", "monthly", "annual", "recurring", "membership" in the description
+- Utility companies: electric, gas, water, internet providers, phone carriers
+- Insurance companies
+- Loan payments
+- Cloud storage services
+- SaaS tools: GitHub, Figma, Slack, Zoom, Notion, Adobe, etc.
+
+If the text is sparse, noisy, OCR-corrupted, mostly headers, mostly filenames, or does not contain enough evidence to support a recurring charge, return [].
+Never guess based on common subscriptions. Only include a service when the input text provides direct evidence.
+
+DO NOT extract:
+- One-time purchases at retail stores, restaurants, or gas stations
+- ATM or cash withdrawals
+- Transfers between accounts
+- Refunds or credits
+- Payroll / salary deposits
+
+===== USER-DESCRIBED SUBSCRIPTIONS =====
+
+The user may also write naturally:
 - "Netflix $15 monthly"
 - "Spotify yearly 99"
-- "Claude Pro 20 per month"
-- "Gym membership 50 every month on the 3rd"
+- "Gym membership $50 every month on the 3rd"
 - "Car insurance 600 every 6 months"
-- "Apple iCloud storage $2.99 monthly"
 
-You must convert these into a clean JSON array.
+Parse these normally.
 
--------------------------------------
+===== OUTPUT FORMAT =====
 
-OUTPUT FORMAT
+Return ONLY a valid JSON array. No extra text, no markdown, no explanations.
 
-Return ONLY a valid JSON array.
+Each object must have:
 
-Each object must contain:
+  name: The clean official service/company name.
+    Remove: "subscription", "plan", "account", "membership", "app", "payment", "billing"
+    Examples: "Netflix", "Spotify", "T-Mobile", "Geico"
 
-name: The official service name.
-Examples: "Netflix", "Spotify", "Claude Pro", "Planet Fitness".
+  amount: The charge amount as a number (always positive).
+    Extract from "$15", "15.99", "USD 12.00" etc.
+    For annual billing, keep the actual annual amount.
 
-amount: Monthly cost as a number.
-If annual, convert to the actual amount but keep cycle as annual.
+  cycle: One of exactly: "monthly" | "annual" | "weekly" | "quarterly"
+    If unknown, default to "monthly".
+    Hint: If the same charge appears ~12 times in a year-worth of data, it's monthly.
 
-cycle: One of:
-"monthly"
-"annual"
-"weekly"
-"quarterly"
+  category: Choose the BEST match from this exact list:
+    "Entertainment"   → streaming media, music, gaming, video, books
+    "Dev Tools"       → software dev tools, hosting, APIs, design tools (Figma, GitHub, AWS, Vercel)
+    "Health"          → gym, fitness apps, health/wellness, meditation
+    "Productivity"    → AI tools, task managers, project management, office suites (Notion, Slack, Zoom, OpenAI, Claude)
+    "Cloud"           → cloud storage, backup services (iCloud, Google One, Dropbox, OneDrive)
+    "News & Media"    → news sites, magazines, newsletters, podcasts (NYT, Substack, Economist)
+    "Utilities"       → internet, phone, electricity, gas, water, trash, TV/cable
+    "Loans"           → student loans, car payments, mortgage payments, credit card minimum payments
+    "Insurance"       → health, car, renters, homeowners, life insurance
+    "Other"           → anything that doesn't clearly fit above
 
-category: Choose ONE from:
+  renewalDate: The NEXT upcoming charge date in YYYY-MM-DD.
+    - Use any date visible in the statement for this charge.
+    - If the date has already passed, project it forward one billing cycle.
+    - If no date is available, return null.
 
-Entertainment
-Dev Tools
-Health
-Productivity
-Cloud
-News & Media
-Utilities
-Loans
-Insurance
-Other
-
-renewalDate:
-Return the NEXT upcoming date in YYYY-MM-DD format.
+===== RENEWAL DATE RULES =====
 
 HOW TO CALCULATE RENEWAL DATES:
-1. Identify the billing day (e.g. "every 11th" -> day 11).
+1. Identify the billing day (e.g. "every 11th" → day 11).
 2. Compare the billing day to the CURRENT day.
-3. If billing day >= CURRENT day, the renewal date is THIS month.
-4. If billing day < CURRENT day, the renewal date is NEXT month.
+3. If billing day >= CURRENT day → return THIS month.
+4. If billing day < CURRENT day → return NEXT month.
 
-CRITICAL EXAMPLES:
-If today is "2026-03-05" and the user says "every 11th": 11 is >= 5, so return "2026-03-11".
-If today is "2026-03-05" and the user says "every 2nd": 2 is < 5, so return "2026-04-02".
+EXAMPLES (if today is "2026-03-09"):
+- "every 11th" → "2026-03-11"  (11 >= 9, so this month)
+- "every 2nd"  → "2026-04-02"  (2 < 9, so next month)
 
-If no date is provided return null.
+===== DEDUPLICATION =====
 
--------------------------------------
+If you see the same service charged multiple months in the statement data, return it ONCE.
 
-CLEANING RULES
-
-Service names must be clean.
-
-BAD:
-"Netflix subscription"
-"Spotify plan"
-
-GOOD:
-"Netflix"
-"Spotify"
-
-Remove words like:
-subscription
-plan
-account
-membership
-app
-
--------------------------------------
-
-AMOUNT RULES
-
-Extract numbers even if currency is present.
-
-Examples:
+===== AMOUNT NORMALIZATION =====
 
 "$15" → 15
-"20 dollars" → 20
-"99/year" → 99
+"20 dollars" → 20  
+"USD 9.99" → 9.99
+"99/year" → 99  (cycle: "annual")
 
--------------------------------------
+===== STRICT RULES =====
 
-MULTIPLE SUBSCRIPTIONS
-
-The user may provide many subscriptions in one sentence.
-
-Example:
-
-"I pay Netflix 15 monthly, Spotify 12 monthly and Claude 20"
-
-You must return three objects.
-
--------------------------------------
-
-STRICT OUTPUT RULE
-
-Return ONLY JSON.
-
+Return ONLY a JSON array.
 Do NOT include explanations.
-Do NOT include markdown.
+Do NOT include markdown code fences.
 Do NOT include extra text.
+If no recurring subscriptions or bills are clearly present, return [].
 `
 
 type ParsePayload = {
   text?: string
   currentDate?: string
+  attachments?: Array<{
+    type?: string
+    mediaType?: string
+    data?: string
+    fileName?: string
+  }>
+}
+
+function cleanName(value: unknown) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function normalizeAmount(value: unknown) {
+  const numeric = typeof value === 'number'
+    ? value
+    : Number.parseFloat(String(value || '').replace(/[^0-9.-]/g, ''))
+  if (!Number.isFinite(numeric) || numeric <= 0) return null
+  return Math.round(numeric * 100) / 100
+}
+
+function fingerprintSubscription(item: { name: string; amount: number; cycle: string }) {
+  return `${item.name.toLowerCase()}|${item.amount.toFixed(2)}|${item.cycle}`
+}
+
+function normalizeSubscriptions(subscriptions: unknown[], currentDate?: string) {
+  const seen = new Set<string>()
+  const normalized = []
+
+  for (const item of subscriptions) {
+    if (!item || typeof item !== 'object') continue
+
+    const name = cleanName((item as Record<string, unknown>).name)
+    const amount = normalizeAmount((item as Record<string, unknown>).amount)
+    const cycle = normalizeCycle((item as Record<string, unknown>).cycle)
+    const category = normalizeCategory((item as Record<string, unknown>).category)
+    const renewalDate = coerceFutureRenewalDate((item as Record<string, unknown>).renewalDate, cycle, currentDate)
+
+    if (!name || amount == null) continue
+
+    const normalizedItem = { name, amount, cycle, category, renewalDate }
+    const fingerprint = fingerprintSubscription(normalizedItem)
+    if (seen.has(fingerprint)) continue
+    seen.add(fingerprint)
+    normalized.push(normalizedItem)
+  }
+
+  return normalized
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {
@@ -143,8 +193,19 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { text, currentDate }: ParsePayload = await req.json()
-    if (!text?.trim()) {
+    const { text, currentDate, attachments = [] }: ParsePayload = await req.json().catch(() => ({}))
+    const imageAttachments = attachments
+      .filter((item) => item?.type === 'image' && item?.mediaType && item?.data)
+      .map((item) => ({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: item.mediaType,
+          data: item.data,
+        },
+      }))
+
+    if (!text?.trim() && imageAttachments.length === 0) {
       return new Response(JSON.stringify({ subscriptions: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -166,10 +227,11 @@ Deno.serve(async (req) => {
           {
             role: 'user',
             content: [
+              ...imageAttachments,
               {
                 type: 'text',
-                text: `Current date context: ${currentDate || 'today'}\n\nParse these subscriptions:\n\n${text}`
-              }
+                text: `Current date context: ${currentDate || 'today'}\n\nParse these subscriptions from the provided statement text and/or images. If the images or text do not clearly show recurring subscriptions or bills, return [] and do not guess.\n\n${text || 'No extracted text was available. Use only the uploaded images if they contain readable subscription or bill information.'}`
+              },
             ]
           },
         ],
@@ -195,7 +257,12 @@ Deno.serve(async (req) => {
       subscriptions = []
     }
 
-    return new Response(JSON.stringify({ subscriptions }), {
+    const normalized = normalizeSubscriptions(
+      Array.isArray(subscriptions) ? subscriptions : [],
+      currentDate,
+    )
+
+    return new Response(JSON.stringify({ subscriptions: normalized }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

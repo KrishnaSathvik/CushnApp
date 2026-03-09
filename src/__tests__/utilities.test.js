@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { formatCurrency, getCurrencySymbol } from '../lib/formatCurrency'
 import { normalizeToMonthly, normalizeToAnnual } from '../lib/normalizeAmount'
 import { getServiceDomain, getServiceMetadata, SERVICE_DOMAINS } from '../lib/serviceDomains'
 import { BILLING_CYCLES, DEFAULT_CURRENCY, DEFAULT_CATEGORIES, EXAMPLE_INPUTS } from '../lib/constants'
 import { buildCSV, buildJSON } from '../lib/exportData'
 import { parseCSV } from '../lib/importData'
+import { coerceFutureRenewalDate } from '../../shared/parseNormalization.ts'
 import {
     hasPendingGuestMigration,
     markGuestMigrationPending,
@@ -12,6 +13,10 @@ import {
     shouldMigrateGuestData,
 } from '../lib/guestMigrationState'
 import { enrichSubscriptionCandidate, findPotentialDuplicate } from '../lib/vendorEnrichment'
+import { hasSourceEvidence, localParse, parseWithClaude } from '../lib/parseSubscriptions'
+
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
 
 // ─── formatCurrency ──────────────────────────────────────────────────────────
 
@@ -136,6 +141,230 @@ describe('getServiceMetadata', () => {
             domain: 'acme.com',
             matchType: 'fallback',
         })
+    })
+
+    it('keeps broader user-facing names for prefix vendor matches', () => {
+        const enriched = enrichSubscriptionCandidate({ name: 'Upstart Loan' })
+        expect(enriched).toMatchObject({
+            name: 'Upstart Loan',
+            rawName: 'Upstart Loan',
+            vendorCanonicalName: 'Upstart',
+            vendorDomain: 'upstart.com',
+            vendorMatchType: 'prefix',
+        })
+    })
+})
+
+describe('hasSourceEvidence', () => {
+    it('accepts subscriptions whose names are present in the source text', () => {
+        expect(hasSourceEvidence(
+            '03/01/2026 Netflix.com 15.49 monthly charge',
+            { name: 'Netflix', vendorDomain: 'netflix.com' }
+        )).toBe(true)
+    })
+
+    it('rejects hallucinated subscriptions not present in the source text', () => {
+        expect(hasSourceEvidence(
+            'statement summary opening balance closing balance total debits total credits',
+            { name: 'Spotify', vendorDomain: 'spotify.com' }
+        )).toBe(false)
+    })
+
+    it('accepts abbreviated merchant descriptors after normalization', () => {
+        expect(hasSourceEvidence(
+            'AMEX AUTOPAY OPENAI*CHATGPT 20.00',
+            { name: 'ChatGPT Plus', rawName: 'OPENAI*CHATGPT', vendorCanonicalName: 'ChatGPT', vendorDomain: 'chatgpt.com' }
+        )).toBe(true)
+    })
+})
+
+describe('parseWithClaude date normalization', () => {
+    beforeEach(() => {
+        fetchMock.mockReset()
+    })
+
+    it('projects past AI renewal dates forward relative to the provided current date', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                subscriptions: [{
+                    name: 'Upstart Loan',
+                    amount: 483,
+                    cycle: 'monthly',
+                    category: 'Loans',
+                    renewalDate: '2025-03-09',
+                }],
+            }),
+        })
+
+        const result = await parseWithClaude(
+            'Upstart loan due tomorrow 483 every month',
+            '2026-03-09',
+        )
+
+        expect(result).toEqual([
+            expect.objectContaining({
+                amount: 483,
+                cycle: 'monthly',
+                category: 'Loans',
+                renewalDate: '2026-03-10',
+            }),
+        ])
+    })
+
+    it('does not apply a global tomorrow override to unrelated multi-item results', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                subscriptions: [
+                    {
+                        name: 'Netflix',
+                        amount: 15.99,
+                        cycle: 'monthly',
+                        category: 'Entertainment',
+                        renewalDate: '2026-03-10',
+                    },
+                    {
+                        name: 'Spotify',
+                        amount: 9.99,
+                        cycle: 'monthly',
+                        category: 'Entertainment',
+                        renewalDate: '2026-03-20',
+                    },
+                ],
+            }),
+        })
+
+        const result = await parseWithClaude(
+            'Netflix due tomorrow 15.99 monthly\nSpotify monthly 9.99 on the 20th',
+            '2026-03-09',
+        )
+
+        expect(result).toEqual([
+            expect.objectContaining({
+                name: 'Netflix',
+                renewalDate: '2026-03-10',
+            }),
+            expect.objectContaining({
+                name: 'Spotify',
+                renewalDate: '2026-03-20',
+            }),
+        ])
+    })
+
+    it('drops malformed server results with invalid amount or empty name', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                subscriptions: [
+                    {
+                        name: '',
+                        amount: 12,
+                        cycle: 'monthly',
+                        category: 'Entertainment',
+                        renewalDate: '2026-03-10',
+                    },
+                    {
+                        name: 'Spotify',
+                        amount: 0,
+                        cycle: 'monthly',
+                        category: 'Entertainment',
+                        renewalDate: '2026-03-10',
+                    },
+                ],
+            }),
+        })
+
+        const result = await parseWithClaude(
+            'spotify monthly',
+            '2026-03-09',
+        )
+
+        expect(result).toEqual([])
+    })
+})
+
+describe('coerceFutureRenewalDate', () => {
+    it('advances biweekly dates in 14-day increments', () => {
+        expect(coerceFutureRenewalDate('2026-03-01', 'biweekly', '2026-03-09')).toBe('2026-03-15')
+    })
+})
+
+describe('localParse fallback parsing', () => {
+    it('supports biweekly billing phrases', () => {
+        const result = localParse('Gym membership 42 every other week', '2026-03-09')
+        expect(result).toEqual([
+            expect.objectContaining({
+                amount: 42,
+                cycle: 'biweekly',
+            }),
+        ])
+    })
+
+    it('uses explicit tomorrow hints for renewal date', () => {
+        const result = localParse('Upstart loan due tomorrow 483 every month', '2026-03-09')
+        expect(result).toEqual([
+            expect.objectContaining({
+                amount: 483,
+                renewalDate: '2026-03-10',
+            }),
+        ])
+    })
+
+    it('supports next weekday phrasing', () => {
+        const result = localParse('Water bill 75 next friday', '2026-03-09')
+        expect(result).toEqual([
+            expect.objectContaining({
+                amount: 75,
+                renewalDate: '2026-03-13',
+            }),
+        ])
+    })
+
+    it('supports every 6 months phrasing as annual billing', () => {
+        const result = localParse('Car insurance 600 every 6 months', '2026-03-09')
+        expect(result).toEqual([
+            expect.objectContaining({
+                amount: 600,
+                cycle: 'annual',
+            }),
+        ])
+    })
+
+    it('splits mixed manual input joined by and into multiple subscriptions', () => {
+        const result = localParse('Netflix 15.99 monthly and Spotify 9.99 annual', '2026-03-09')
+        expect(result).toHaveLength(2)
+        expect(result[0]).toEqual(expect.objectContaining({
+            name: 'Netflix',
+            amount: 15.99,
+            cycle: 'monthly',
+        }))
+        expect(result[1]).toEqual(expect.objectContaining({
+            name: 'Spotify',
+            amount: 9.99,
+            cycle: 'annual',
+        }))
+    })
+
+    it('supports ordinal day phrasing for monthly renewals', () => {
+        const result = localParse('Gym membership 50 every month on the 3rd', '2026-03-09')
+        expect(result).toEqual([
+            expect.objectContaining({
+                amount: 50,
+                renewalDate: '2026-04-03',
+            }),
+        ])
+    })
+
+    it('handles OCR-like merchant text without dropping the vendor match', () => {
+        const result = localParse('AMEX AUTOPAY OPENAI*CHATGPT 20 monthly', '2026-03-09')
+        expect(result).toEqual([
+            expect.objectContaining({
+                amount: 20,
+                category: 'Productivity',
+            }),
+        ])
+        expect(['openai.com', 'chatgpt.com']).toContain(result[0].vendorDomain)
     })
 })
 

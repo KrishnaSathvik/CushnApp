@@ -79,9 +79,13 @@ function ProtectedRoute({ children }) {
 }
 
 function PublicOnlyRoute({ children }) {
+  const location = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") ? redirectParam : "/";
+  if (isAuthenticated) return <Navigate to={redirectTo} replace />;
   return children;
 }
 

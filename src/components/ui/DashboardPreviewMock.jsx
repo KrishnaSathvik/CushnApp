@@ -7,7 +7,7 @@ const DOMAINS = {
   Spotify: "spotify.com",
   GitHub: "github.com",
   Figma: "figma.com",
-  "Claude Pro": "claude.ai",
+  "Claude Pro": "anthropic.com",
   "Apple One": "apple.com",
 };
 

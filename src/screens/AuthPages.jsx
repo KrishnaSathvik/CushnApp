@@ -557,12 +557,17 @@ export function SignUpPage() {
 // ═════════════════════════════════════════════════════════════════════════════════
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { T } = useTheme()
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") ? redirectParam : "/";
 
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
@@ -573,7 +578,7 @@ export function LoginPage() {
     setError("");
     try {
       await login(email, password);
-      navigate("/");
+      navigate(redirectTo);
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {

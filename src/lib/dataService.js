@@ -140,6 +140,88 @@ const DEFAULT_NOTIFICATION_PREFERENCES = {
     timezone: 'UTC',
 }
 
+function addDays(dateString, days) {
+    const date = new Date(`${dateString}T00:00:00Z`)
+    date.setUTCDate(date.getUTCDate() + days)
+    return date.toISOString().slice(0, 10)
+}
+
+function buildReminderEventsForSubscription(userId, subscription, preferences) {
+    if (!subscription?.id || subscription.status !== 'active' || !subscription.renewalDate) {
+        return []
+    }
+
+    const uniqueDaysBefore = [...new Set(
+        (preferences?.daysBefore || DEFAULT_NOTIFICATION_PREFERENCES.daysBefore)
+            .map((value) => Number(value))
+            .filter((value) => Number.isInteger(value) && value >= 0),
+    )]
+
+    const channels = []
+    if (preferences?.inAppEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.inAppEnabled) {
+        channels.push('in_app')
+    }
+    if (preferences?.emailEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.emailEnabled) {
+        channels.push('email')
+    }
+
+    if (channels.length === 0 || uniqueDaysBefore.length === 0) {
+        return []
+    }
+
+    const events = []
+    for (const daysBefore of uniqueDaysBefore) {
+        const reminderDate = addDays(subscription.renewalDate, -daysBefore)
+        for (const channel of channels) {
+            events.push({
+                user_id: userId,
+                subscription_id: subscription.id,
+                renewal_date: subscription.renewalDate,
+                reminder_date: reminderDate,
+                channel,
+                status: 'queued',
+                error_text: '',
+                sent_at: null,
+            })
+        }
+    }
+
+    return events
+}
+
+async function clearQueuedReminderEventsForSubscriptions(userId, subscriptionIds) {
+    const ids = (subscriptionIds || []).filter(Boolean)
+    if (!ids.length) return
+
+    const { error } = await supabase
+        .from('notification_events')
+        .delete()
+        .eq('user_id', userId)
+        .eq('status', 'queued')
+        .in('subscription_id', ids)
+
+    if (error) throw error
+}
+
+async function syncReminderEventsForSubscriptions(userId, subscriptions, preferences) {
+    if (!isCloud(userId)) return
+
+    const items = (subscriptions || []).filter(Boolean)
+    const subscriptionIds = items.map((item) => item.id).filter(Boolean)
+    await clearQueuedReminderEventsForSubscriptions(userId, subscriptionIds)
+
+    const events = items.flatMap((item) => buildReminderEventsForSubscription(userId, item, preferences))
+    if (!events.length) return
+
+    const { error } = await supabase
+        .from('notification_events')
+        .upsert(events, {
+            onConflict: 'user_id,subscription_id,renewal_date,reminder_date,channel',
+        })
+
+    if (error) throw error
+}
+
 function mapNotificationEventFromSupabase(row) {
     if (!row) return null
     return {
@@ -262,7 +344,10 @@ export async function addSubscription(userId, data) {
         .single()
 
     if (error) throw error
-    return mapSubFromSupabase(inserted)
+    const subscription = mapSubFromSupabase(inserted)
+    const preferences = await getNotificationPreferences(userId)
+    await syncReminderEventsForSubscriptions(userId, [subscription], preferences)
+    return subscription
 }
 
 export async function addSubscriptionsBulk(userId, items) {
@@ -279,7 +364,10 @@ export async function addSubscriptionsBulk(userId, items) {
         .select()
 
     if (error) throw error
-    return (data || []).map(mapSubFromSupabase)
+    const subscriptions = (data || []).map(mapSubFromSupabase)
+    const preferences = await getNotificationPreferences(userId)
+    await syncReminderEventsForSubscriptions(userId, subscriptions, preferences)
+    return subscriptions
 }
 
 export async function updateSubscription(userId, id, data) {
@@ -295,11 +383,16 @@ export async function updateSubscription(userId, id, data) {
         .single()
 
     if (error) throw error
-    return mapSubFromSupabase(updated)
+    const subscription = mapSubFromSupabase(updated)
+    const preferences = await getNotificationPreferences(userId)
+    await syncReminderEventsForSubscriptions(userId, [subscription], preferences)
+    return subscription
 }
 
 export async function deleteSubscription(userId, id) {
     if (!isCloud(userId)) return dexieDelete(Number(id))
+
+    await clearQueuedReminderEventsForSubscriptions(userId, [id])
 
     const { error } = await supabase
         .from('subscriptions')
@@ -323,6 +416,7 @@ export async function clearAllSubscriptions(userId) {
 export async function pauseSubscription(userId, id) {
     if (!isCloud(userId)) return dexiePause(Number(id))
 
+    await clearQueuedReminderEventsForSubscriptions(userId, [id])
     return updateSubscription(userId, id, { status: 'paused' })
 }
 
@@ -537,7 +631,10 @@ export async function saveNotificationPreferences(userId, data) {
         .single()
 
     if (error) throw error
-    return mapNotificationPrefsFromSupabase(updated)
+    const preferences = mapNotificationPrefsFromSupabase(updated)
+    const subscriptions = await getSubscriptions(userId)
+    await syncReminderEventsForSubscriptions(userId, subscriptions, preferences)
+    return preferences
 }
 
 export async function getInAppNotificationEvents(userId) {

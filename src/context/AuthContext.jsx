@@ -10,6 +10,10 @@ import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { migrateLocalToSupabase } from "../lib/syncMigration";
 import { seedDefaultCategories } from "../lib/dataService";
 import {
+  convertGuestSessionToUser,
+  ensureGuestSession,
+} from "../lib/guestSessions";
+import {
   clearPendingGuestMigration,
   markGuestMigrationPending,
   shouldMigrateGuestData,
@@ -24,6 +28,25 @@ const LEGACY_ONBOARDED_KEY = "subtrackr_onboarded";
 const THEME_PREFERENCE_KEY = "cushn_theme";
 const LEGACY_THEME_PREFERENCE_KEY = "subtrackr_theme";
 const SIGN_OUT_TIMEOUT_MS = 1500;
+
+function readPersistedGuest() {
+  const stored = localStorage.getItem(GUEST_KEY);
+  if (!stored) return null;
+
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+function persistGuest(guest) {
+  localStorage.setItem(GUEST_KEY, JSON.stringify(guest));
+}
+
+function clearPersistedGuest() {
+  localStorage.removeItem(GUEST_KEY);
+}
 
 function clearPersistedSupabaseSession() {
   const storageKey = getSupabaseAuthStorageKey();
@@ -75,9 +98,9 @@ export function AuthProvider({ children }) {
             data: { session: s },
           } = await supabase.auth.getSession();
           if (s?.user && mounted) {
-            const shouldMigrate = shouldMigrateGuestData(
-              !!localStorage.getItem(GUEST_KEY),
-            );
+            const persistedGuest = readPersistedGuest();
+            const shouldMigrate = shouldMigrateGuestData(!!persistedGuest);
+            const guestSessionId = persistedGuest?.guestSessionId || null;
             setSession({
               type: "auth",
               user: s.user,
@@ -86,7 +109,10 @@ export function AuthProvider({ children }) {
                 s.user.email?.split("@")[0] ||
                 "User",
             });
-            localStorage.removeItem(GUEST_KEY);
+            clearPersistedGuest();
+            if (guestSessionId) {
+              void convertGuestSessionToUser(guestSessionId, s.user.id).catch(() => {});
+            }
             if (shouldMigrate) {
               await migrateLocalToSupabase(s.user.id).catch(() => {});
               clearPendingGuestMigration();
@@ -99,19 +125,32 @@ export function AuthProvider({ children }) {
         }
 
         // 2) Fall back to guest
-        const stored = localStorage.getItem(GUEST_KEY);
-        if (stored && mounted) {
-          try {
-            const guest = JSON.parse(stored);
-            setSession({
-              type: "guest",
-              name: guest.name,
-              createdAt: guest.createdAt,
-            });
-            return;
-          } catch {
-            /* corrupted */
-          }
+        const guest = readPersistedGuest();
+        if (guest && mounted) {
+          setSession({
+            type: "guest",
+            name: guest.name,
+            createdAt: guest.createdAt,
+            guestSessionId: guest.guestSessionId || null,
+          });
+
+          void ensureGuestSession(guest.guestSessionId, guest.name)
+            .then((guestSessionId) => {
+              if (!mounted || !guestSessionId || guest.guestSessionId === guestSessionId) {
+                return;
+              }
+
+              const nextGuest = { ...guest, guestSessionId };
+              persistGuest(nextGuest);
+              setSession({
+                type: "guest",
+                name: nextGuest.name,
+                createdAt: nextGuest.createdAt,
+                guestSessionId,
+              });
+            })
+            .catch(() => {});
+          return;
         }
 
         // 3) Not logged in
@@ -169,6 +208,8 @@ export function AuthProvider({ children }) {
         const shouldMigrate = shouldMigrateGuestData(
           !!localStorage.getItem(GUEST_KEY),
         );
+        const persistedGuest = readPersistedGuest();
+        const guestSessionId = persistedGuest?.guestSessionId || null;
 
         setSession({
           type: "auth",
@@ -178,7 +219,10 @@ export function AuthProvider({ children }) {
             s.user.email?.split("@")[0] ||
             "User",
         });
-        localStorage.removeItem(GUEST_KEY);
+        clearPersistedGuest();
+        if (guestSessionId) {
+          void convertGuestSessionToUser(guestSessionId, s.user.id).catch(() => {});
+        }
 
         // Guest → Auth migration: migrate Dexie data to Supabase
         // Do not await these database calls inside onAuthStateChange to prevent GoTrue session deadlocks
@@ -204,10 +248,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ─── Guest login ───────────────────────────────────────────────────
-  const loginAsGuest = useCallback((name) => {
-    const guest = { name, createdAt: new Date().toISOString() };
-    localStorage.setItem(GUEST_KEY, JSON.stringify(guest));
-    setSession({ type: "guest", name, createdAt: guest.createdAt });
+  const loginAsGuest = useCallback(async (name) => {
+    const guest = {
+      name,
+      createdAt: new Date().toISOString(),
+      guestSessionId: await ensureGuestSession(null, name),
+    };
+    persistGuest(guest);
+    setSession({
+      type: "guest",
+      name,
+      createdAt: guest.createdAt,
+      guestSessionId: guest.guestSessionId,
+    });
+    return guest;
   }, []);
 
   // ─── Sign up with email ────────────────────────────────────────────
@@ -288,7 +342,7 @@ export function AuthProvider({ children }) {
 
   // ─── Logout ───────────────────────────────────────────────────────
   const logout = useCallback(async () => {
-    localStorage.removeItem(GUEST_KEY);
+    clearPersistedGuest();
     clearPendingGuestMigration();
     setSession(null);
     await clearSupabaseSession();
@@ -302,7 +356,7 @@ export function AuthProvider({ children }) {
     });
     if (error) throw error;
 
-    localStorage.removeItem(GUEST_KEY);
+    clearPersistedGuest();
     clearPendingGuestMigration();
     localStorage.removeItem("subtrackr_bill_type_mapping");
     localStorage.removeItem("subtrackr_currency");

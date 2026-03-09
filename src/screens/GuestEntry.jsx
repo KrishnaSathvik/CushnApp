@@ -17,14 +17,14 @@ export default function GuestEntry() {
   const { loginAsGuest } = useAuth();
   const navigate = useNavigate();
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!name.trim()) return;
-    loginAsGuest(name.trim());
+    await loginAsGuest(name.trim());
     navigate("/");
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleStart();
+    if (e.key === "Enter") void handleStart();
   };
 
   return (
@@ -84,7 +84,7 @@ export default function GuestEntry() {
 
       {/* Start button */}
       <button
-        onClick={handleStart}
+        onClick={() => void handleStart()}
         disabled={!name.trim()}
         className="motion-rise-in motion-delay-3 interactive-btn interactive-btn-primary w-full h-12 rounded-xl flex items-center justify-center gap-2 font-bold text-[14px] mt-2 transition-all duration-200 cursor-pointer"
         style={{

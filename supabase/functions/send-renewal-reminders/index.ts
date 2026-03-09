@@ -14,7 +14,6 @@ type QueueResponse = {
 }
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
-const SITE_URL = 'https://cushn.app'
 
 function getCycleLabel(cycle: string): string {
   if (cycle === 'annual') return 'annual'
@@ -24,7 +23,15 @@ function getCycleLabel(cycle: string): string {
   return 'monthly'
 }
 
-function buildReminderEmailHtml(recipientName: string, name: string, amount: number, currency: string, cycle: string, renewalDate: string) {
+function buildReminderEmailHtml(
+  recipientName: string,
+  name: string,
+  amount: number,
+  currency: string,
+  cycle: string,
+  renewalDate: string,
+  siteUrl: string,
+) {
   const serviceName = name || 'Subscription'
   const formattedAmount = `${escapeEmailHtml(currency)} ${Number(amount).toFixed(2)}`
   const cycleLabel = getCycleLabel(cycle)
@@ -40,10 +47,10 @@ function buildReminderEmailHtml(recipientName: string, name: string, amount: num
     sectionTitle: '🔔 What to Review',
     sectionBody: `Double-check the service, amount, and renewal timing now. You can adjust reminder preferences anytime in Cushn Settings if you want fewer or different alerts.`,
     ctaLabel: 'Review My Renewals',
-    ctaHref: `${SITE_URL}/calendar`,
+    ctaHref: `${siteUrl}/calendar`,
     footerNote: `Service: ${escapeEmailHtml(serviceName)} · Amount: ${formattedAmount} · Renewal date: ${escapeEmailHtml(renewalDate)}`,
     footerSecondaryLabel: 'Manage preferences',
-    footerSecondaryHref: `${SITE_URL}/preferences`,
+    footerSecondaryHref: `${siteUrl}/login?redirect=%2Fpreferences`,
   })
 }
 
@@ -52,19 +59,39 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    const cronSecret = Deno.env.get('CRON_SECRET')
     const emailFrom = Deno.env.get('EMAIL_FROM') || 'Cushn <support@cushn.app>'
-    if (!supabaseUrl || !serviceRoleKey) {
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://cushn.app'
+    const authHeader = req.headers.get('Authorization')
+    const headerSecret = req.headers.get('x-cron-secret')
+    const bearerSecret = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+    if (!supabaseUrl || !serviceRoleKey || !cronSecret) {
       return new Response(
-        JSON.stringify({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }),
+        JSON.stringify({ error: 'Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or CRON_SECRET' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
-    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {}
+    if (headerSecret !== cronSecret && bearerSecret !== cronSecret) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const body = await req.json().catch(() => ({}))
     const targetDate = typeof body?.targetDate === 'string' && body.targetDate
       ? body.targetDate
       : new Date().toISOString().slice(0, 10)
@@ -87,76 +114,92 @@ Deno.serve(async (req) => {
     let emailsFailed = 0
 
     if (resendApiKey) {
-      const { data: emailEvents, error: eventsError } = await supabase
-        .from('notification_events')
-        .select('id,user_id,subscription_id,renewal_date')
-        .eq('channel', 'email')
-        .eq('status', 'queued')
-        .eq('reminder_date', targetDate)
-        .limit(200)
+      const batchSize = 200
 
-      if (eventsError) {
-        return new Response(JSON.stringify({ error: eventsError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
+      while (true) {
+        const { data: emailEvents, error: eventsError } = await supabase
+          .from('notification_events')
+          .select('id,user_id,subscription_id,renewal_date')
+          .eq('channel', 'email')
+          .eq('status', 'queued')
+          .eq('reminder_date', targetDate)
+          .limit(batchSize)
 
-      for (const event of emailEvents || []) {
-        try {
-          const { data: sub, error: subError } = await supabase
-            .from('subscriptions')
-            .select('name,amount,currency,cycle,renewal_date')
-            .eq('id', event.subscription_id)
-            .single()
-          if (subError) throw new Error(subError.message)
-
-          const { data: userResult, error: userErr } = await supabase.auth.admin.getUserById(event.user_id)
-          if (userErr || !userResult.user?.email) throw new Error(userErr?.message || 'User email not found')
-          const recipientName =
-            userResult.user.user_metadata?.full_name ||
-            userResult.user.email?.split('@')[0] ||
-            'there'
-
-          const subject = `Reminder: ${sub.name} renews on ${sub.renewal_date}`
-          const html = buildReminderEmailHtml(recipientName, sub.name, sub.amount, sub.currency, sub.cycle, sub.renewal_date)
-
-          const emailRes = await fetch(RESEND_API_URL, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: emailFrom,
-              to: [userResult.user.email],
-              subject,
-              html,
-            }),
+        if (eventsError) {
+          return new Response(JSON.stringify({ error: eventsError.message }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
-
-          if (!emailRes.ok) {
-            const text = await emailRes.text()
-            throw new Error(text || 'Email provider error')
-          }
-
-          const { error: markSentError } = await supabase
-            .from('notification_events')
-            .update({ status: 'sent', sent_at: new Date().toISOString(), error_text: '' })
-            .eq('id', event.id)
-          if (markSentError) throw new Error(markSentError.message)
-
-          emailsSent++
-        } catch (err) {
-          emailsFailed++
-          await supabase
-            .from('notification_events')
-            .update({
-              status: 'failed',
-              error_text: String(err).slice(0, 900),
-            })
-            .eq('id', event.id)
         }
+
+        if (!emailEvents?.length) break
+
+        for (const event of emailEvents) {
+          try {
+            const { data: sub, error: subError } = await supabase
+              .from('subscriptions')
+              .select('name,amount,currency,cycle,renewal_date')
+              .eq('id', event.subscription_id)
+              .single()
+            if (subError) throw new Error(subError.message)
+
+            const { data: userResult, error: userErr } = await supabase.auth.admin.getUserById(event.user_id)
+            if (userErr || !userResult.user?.email) throw new Error(userErr?.message || 'User email not found')
+            const recipientName =
+              userResult.user.user_metadata?.full_name ||
+              userResult.user.email?.split('@')[0] ||
+              'there'
+
+            const subject = `Reminder: ${sub.name} renews on ${sub.renewal_date}`
+            const html = buildReminderEmailHtml(
+              recipientName,
+              sub.name,
+              sub.amount,
+              sub.currency,
+              sub.cycle,
+              sub.renewal_date,
+              siteUrl,
+            )
+
+            const emailRes = await fetch(RESEND_API_URL, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: emailFrom,
+                to: [userResult.user.email],
+                subject,
+                html,
+              }),
+            })
+
+            if (!emailRes.ok) {
+              const text = await emailRes.text()
+              throw new Error(text || 'Email provider error')
+            }
+
+            const { error: markSentError } = await supabase
+              .from('notification_events')
+              .update({ status: 'sent', sent_at: new Date().toISOString(), error_text: '' })
+              .eq('id', event.id)
+            if (markSentError) throw new Error(markSentError.message)
+
+            emailsSent++
+          } catch (err) {
+            emailsFailed++
+            await supabase
+              .from('notification_events')
+              .update({
+                status: 'failed',
+                error_text: String(err).slice(0, 900),
+              })
+              .eq('id', event.id)
+          }
+        }
+
+        if (emailEvents.length < batchSize) break
       }
     }
 

@@ -2,6 +2,17 @@ import { getServiceMetadata } from './serviceDomains'
 
 const COMPANY_SUFFIX_RE = /\b(inc|llc|ltd|corp|co|company|digital|services|service|subscription|subscr|payment|payments|online|web|app|usa)\b/gi
 
+function isSuffixOnlyVariant(cleaned, canonicalName) {
+    if (!cleaned || !canonicalName) return false
+    const remainder = cleaned
+        .replace(new RegExp(`^${canonicalName}\\b`, 'i'), '')
+        .replace(COMPANY_SUFFIX_RE, ' ')
+        .replace(/\b\d+\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    return remainder.length === 0
+}
+
 function toTitleCase(value) {
     return value
         .split(/\s+/)
@@ -23,8 +34,14 @@ export function enrichVendorName(name) {
     const metadata = getServiceMetadata(cleaned)
 
     if (metadata) {
+        const shouldCanonicalize = (
+            metadata.matchType === 'exact'
+            || metadata.matchType === 'case-insensitive'
+            || isSuffixOnlyVariant(cleaned, metadata.canonicalName)
+        )
         return {
-            normalizedName: metadata.canonicalName,
+            normalizedName: shouldCanonicalize ? metadata.canonicalName : cleaned,
+            vendorCanonicalName: metadata.canonicalName,
             vendorDomain: metadata.domain,
             vendorConfidence: metadata.confidence,
             vendorMatchType: metadata.matchType,
@@ -44,6 +61,7 @@ export function enrichVendorName(name) {
 
     return {
         normalizedName,
+        vendorCanonicalName: null,
         vendorDomain: null,
         vendorConfidence: 0.35,
         vendorMatchType: 'fallback',
@@ -78,6 +96,8 @@ export function enrichSubscriptionCandidate(item) {
     return {
         ...item,
         name: vendor.normalizedName || item?.name || '',
+        rawName: item?.rawName || item?.name || '',
+        vendorCanonicalName: vendor.vendorCanonicalName,
         vendorDomain: vendor.vendorDomain,
         vendorConfidence: vendor.vendorConfidence,
         vendorMatchType: vendor.vendorMatchType,

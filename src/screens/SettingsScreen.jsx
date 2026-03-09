@@ -767,7 +767,7 @@ export default function SettingsScreen() {
                         color: T.fgSubtle,
                     }}
                 >
-                    Cushn v{import.meta.env.VITE_APP_VERSION || '1.0.0'}
+                    Cushn v{import.meta.env.VITE_APP_VERSION || '1.1.0'}
                 </div>
             </div>
 

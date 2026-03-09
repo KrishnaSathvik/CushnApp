@@ -7,6 +7,72 @@ const corsHeaders = {
 }
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
+const DISPATCH_STATUS_PROCESSING = 'processing'
+const DISPATCH_STATUS_SENT = 'sent'
+const DISPATCH_STATUS_FAILED = 'failed'
+
+async function claimWelcomeEmailDispatch(adminClient: ReturnType<typeof createClient>, userId: string, nowIso: string) {
+  const lockToken = crypto.randomUUID()
+
+  const { error: insertError } = await adminClient
+    .from('welcome_email_dispatches')
+    .insert({
+      user_id: userId,
+      status: DISPATCH_STATUS_PROCESSING,
+      lock_token: lockToken,
+      attempt_count: 1,
+      locked_at: nowIso,
+      updated_at: nowIso,
+    })
+
+  if (!insertError) {
+    return { claimed: true, lockToken }
+  }
+
+  if (insertError.code !== '23505') {
+    throw new Error(insertError.message)
+  }
+
+  const { data: existing, error: existingError } = await adminClient
+    .from('welcome_email_dispatches')
+    .select('status,attempt_count')
+    .eq('user_id', userId)
+    .single()
+
+  if (existingError) {
+    throw new Error(existingError.message)
+  }
+
+  if (existing?.status === DISPATCH_STATUS_SENT || existing?.status === DISPATCH_STATUS_PROCESSING) {
+    return { claimed: false, reason: existing.status === DISPATCH_STATUS_SENT ? 'already_sent' : 'already_processing' }
+  }
+
+  const nextAttemptCount = Number(existing?.attempt_count || 0) + 1
+  const { data: reclaimed, error: reclaimError } = await adminClient
+    .from('welcome_email_dispatches')
+    .update({
+      status: DISPATCH_STATUS_PROCESSING,
+      lock_token: lockToken,
+      attempt_count: nextAttemptCount,
+      locked_at: nowIso,
+      updated_at: nowIso,
+      last_error: null,
+    })
+    .eq('user_id', userId)
+    .eq('status', DISPATCH_STATUS_FAILED)
+    .select('user_id')
+    .maybeSingle()
+
+  if (reclaimError) {
+    throw new Error(reclaimError.message)
+  }
+
+  if (!reclaimed) {
+    return { claimed: false, reason: 'already_processing' }
+  }
+
+  return { claimed: true, lockToken }
+}
 
 function buildWelcomeEmailHtml(recipientName: string, siteUrl: string) {
   return buildEditorialEmail({
@@ -22,7 +88,7 @@ function buildWelcomeEmailHtml(recipientName: string, siteUrl: string) {
     ctaHref: `${siteUrl}/`,
     footerNote: 'Start with the dashboard, add your first few services, and let Cushn keep the renewal timeline visible from there.',
     footerSecondaryLabel: 'Manage preferences',
-    footerSecondaryHref: `${siteUrl}/preferences`,
+    footerSecondaryHref: `${siteUrl}/login?redirect=%2Fpreferences`,
   })
 }
 
@@ -46,6 +112,7 @@ Deno.serve(async (req) => {
     const emailFrom = Deno.env.get('EMAIL_FROM') || 'Cushn <support@cushn.app>'
     const siteUrl = Deno.env.get('SITE_URL') || 'https://cushn.app'
     const authHeader = req.headers.get('Authorization')
+    const nowIso = new Date().toISOString()
 
     if (!supabaseUrl || !anonKey || !serviceRoleKey || !resendApiKey) {
       return new Response(JSON.stringify({ error: 'Missing required environment configuration' }), {
@@ -97,6 +164,17 @@ Deno.serve(async (req) => {
       })
     }
 
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+
+    const dispatchClaim = await claimWelcomeEmailDispatch(adminClient, user.id, nowIso)
+    if (!dispatchClaim.claimed) {
+      return new Response(JSON.stringify({ sent: false, skipped: dispatchClaim.reason || 'already_processing' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const recipientName = user.user_metadata?.full_name || user.email.split('@')[0] || 'there'
     const html = buildWelcomeEmailHtml(recipientName, siteUrl)
 
@@ -116,20 +194,41 @@ Deno.serve(async (req) => {
 
     if (!emailRes.ok) {
       const text = await emailRes.text()
+      await adminClient
+        .from('welcome_email_dispatches')
+        .update({
+          status: DISPATCH_STATUS_FAILED,
+          last_error: (text || 'Email provider error').slice(0, 900),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
       return new Response(JSON.stringify({ error: text || 'Email provider error' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
+    const { error: markSentError } = await adminClient
+      .from('welcome_email_dispatches')
+      .update({
+        status: DISPATCH_STATUS_SENT,
+        sent_at: nowIso,
+        last_error: null,
+        updated_at: nowIso,
+      })
+      .eq('user_id', user.id)
+
+    if (markSentError) {
+      return new Response(JSON.stringify({ error: markSentError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const { error: updateError } = await adminClient.auth.admin.updateUserById(user.id, {
       user_metadata: {
         ...user.user_metadata,
-        welcome_email_sent_at: new Date().toISOString(),
+        welcome_email_sent_at: nowIso,
       },
     })
 
@@ -144,7 +243,7 @@ Deno.serve(async (req) => {
       sent: true,
       userId: user.id,
       email: user.email,
-      welcomeEmailSentAt: new Date().toISOString(),
+      welcomeEmailSentAt: nowIso,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
