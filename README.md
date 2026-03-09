@@ -1,81 +1,74 @@
 # Cushn
 
-Cushn is a React + Vite subscription tracker with:
+Cushn is a React + Vite subscription tracker that helps you manage your recurring expenses, whether you prefer a lightweight guest experience or a fully cloud-synced account.
 
-- Guest mode backed by local Dexie storage
-- Authenticated mode backed by Supabase
-- Shared onboarding flow for guest and authenticated users
-- AI-assisted subscription parsing
-- CSV import preview, backup/restore, and vendor-aware duplicate detection
-- Budgets, analytics, renewal reminders, and calendar views
-- Cloud-synced authenticated settings for currency, theme preference, and bill-type mapping
-- Realtime sync for subscriptions, categories, budgets, and in-app reminder events
-- Live in-app and email reminder delivery for upcoming renewals
-- Persisted vendor metadata on subscriptions for domain/confidence-aware UI and duplicate handling
+## ✨ Features
 
-## Requirements
+- **Guest & Authenticated Modes:** Seamlessly use the app with local Dexie storage or sign up to sync with Supabase.
+- **AI-Assisted Parsing:** Automatically parse subscription details from text or statements.
+- **Smart Import/Export:** CSV import preview, backup/restore, and vendor-aware duplicate detection.
+- **Comprehensive Tracking:** Manage budgets, view analytics, and track expenses via calendar views.
+- **Realtime Sync:** Instantly sync subscriptions, categories, budgets, and in-app reminder events across devices.
+- **Notifications & Reminders:** Live in-app and email reminder delivery for upcoming renewals.
+- **Cloud Preferences:** Sync currency, theme preference, and bill-type mapping for authenticated users.
+- **Vendor Enrichment:** Persisted vendor metadata (domain, confidence, match type) for smarter categorization.
 
+## 🛠️ Tech Stack
+
+- **Frontend:** React 19 + Vite
+- **Local Storage:** Dexie (IndexedDB)
+- **Backend & Auth:** Supabase Postgres, Realtime, and Edge Functions
+- **State Management:** React Context & Hooks (no centralized global store)
+
+## 🚀 Getting Started
+
+### Requirements
 - Node.js 20+
 - npm
-- A Supabase project for authenticated mode
+- A Supabase project (for authenticated mode)
 
-## Local Setup
+### Local Setup
 
-1. Install dependencies:
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-```bash
-npm install
-```
+2. **Configure environment variables:**  
+   Create a `.env.local` file in the root directory:
+   ```env
+   VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+   VITE_SUPABASE_ANON_KEY=<supabase-anon-key>
+   VITE_PARSE_API_URL=https://<project-ref>.functions.supabase.co/parse-subscriptions
+   VITE_SITE_URL=https://cushn.app
+   VITE_APP_VERSION=1.0.0
+   ```
 
-2. Configure frontend environment in `.env.local`:
+3. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
 
-```bash
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<supabase-anon-key>
-VITE_PARSE_API_URL=https://<project-ref>.functions.supabase.co/parse-subscriptions
-VITE_SITE_URL=https://cushn.app
-VITE_APP_VERSION=1.0.0
-```
+### Available Scripts
+- `npm run dev` - Start local dev server
+- `npm run build` - Build the production bundle and prerender public routes
+- `npm run preview` - Serve the production build locally
+- `npm run lint` - Run ESLint
+- `npm run test` - Run Vitest
+- `npm run test:realtime` - Run a live Supabase realtime smoke test
 
-3. Start the app:
+## 🗄️ Database Setup (Supabase)
 
-```bash
-npm run dev
-```
+This app relies on Supabase for its backend. Depending on whether you are starting fresh or upgrading an existing project, follow the corresponding migration path.
 
-## Scripts
+### Fresh Project
+Run `supabase/final_setup.sql` in the Supabase SQL Editor.  
+*Why:* This is the current canonical schema. It includes core tables, reminder tables, indexes, RLS policies, realtime settings, and vendor metadata columns along with the `user_settings` structure.
 
-- `npm run dev` - start local dev server
-- `npm run build` - build the production bundle and prerender public routes
-- `npm run preview` - serve the production build locally
-- `npm run lint` - run ESLint
-- `npm run test` - run Vitest
-- `npm run test:realtime` - run a live Supabase realtime smoke test
+*(If you previously ran an older version of `final_setup.sql` before recent updates, apply these extensions: `20260305_email_reminders.sql`, `20260308_user_settings.sql`, and `20260308_vendor_metadata.sql` in that order).*
 
-## Supabase Setup
-
-This repo has an older `supabase/migration.sql`, but the current app expects the newer schema in `supabase/final_setup.sql`.
-
-### Fresh project
-
-Run these SQL files in order:
-
-1. `supabase/final_setup.sql`
-
-Why:
-
-- `final_setup.sql` is the current canonical schema. It includes the core tables, reminder tables, indexes, RLS policies, realtime membership, `user_settings`, vendor metadata columns on `subscriptions`, and the current `queue_renewal_reminders` RPC behavior.
-
-If you already used an older copy of `final_setup.sql` before the recent settings/vendor work, run these on top:
-
-1. `supabase/20260305_email_reminders.sql`
-2. `supabase/20260308_user_settings.sql`
-3. `supabase/20260308_vendor_metadata.sql`
-
-### Existing older project
-
-If your database was originally created from `supabase/migration.sql`, run these files in order instead:
-
+### Existing Older Project
+If your database was initialized with the older `supabase/migration.sql`, run the following files in order:
 1. `supabase/migration.sql`
 2. `supabase/20260305_audit_hardening.sql`
 3. `supabase/20260305_reminders.sql`
@@ -83,57 +76,18 @@ If your database was originally created from `supabase/migration.sql`, run these
 5. `supabase/20260308_user_settings.sql`
 6. `supabase/20260308_vendor_metadata.sql`
 
-## Database Verification
-
-Run this SQL script in the Supabase SQL Editor after migrations:
-
+### Database Verification
+After running migrations, strictly execute this verification script:
 ```bash
 supabase/verify_production_readiness.sql
 ```
+This query verifies essential requirements: required tables, RLS enablement, indexes, realtime publication membership, email reminder queue logic, authenticated cloud settings storage, pg_cron extension presence, and overall production readiness.
 
-It verifies:
+## ☁️ Edge Functions
 
-- required tables and columns
-- RLS enablement and policies
-- required indexes and check constraints
-- realtime publication membership
-- authenticated cloud settings storage (`user_settings`)
-- vendor metadata columns on `subscriptions`
-- `queue_renewal_reminders` existence
-- email reminder queue logic
-- `service_role` execute grant
-- `pg_cron` extension presence and includes the follow-up query for `daily-renewal-reminders`
+Cushn utilizes Supabase Edge Functions for parsing, emails, and account management.
 
-## Current Product Behavior
-
-- Guests can use the app, complete onboarding, and access Settings without creating an account.
-- Guest-to-account migration now promotes the important persistent data set:
-  - subscriptions
-  - categories
-  - budget
-  - notification preferences
-  - currency
-  - theme preference
-  - bill-type mapping
-  - onboarding completion state
-- Authenticated users sync the important persistent settings across devices through `user_settings`.
-- Vendor enrichment is persisted on subscriptions with:
-  - `vendor_domain`
-  - `vendor_confidence`
-  - `vendor_match_type`
-- CSV import is preview-first and duplicate-aware before writes are committed.
-
-## Edge Functions
-
-Deploy all four edge functions used by the app:
-
-- `supabase/functions/parse-subscriptions/index.ts`
-- `supabase/functions/send-renewal-reminders/index.ts`
-- `supabase/functions/delete-account/index.ts`
-- `supabase/functions/send-welcome-email/index.ts`
-
-Example:
-
+**Deploy all edge functions:**
 ```bash
 supabase functions deploy parse-subscriptions
 supabase functions deploy send-renewal-reminders
@@ -141,138 +95,39 @@ supabase functions deploy delete-account
 supabase functions deploy send-welcome-email
 ```
 
-## Edge Function Secrets
+### Required Secrets
+Set these secrets in your Supabase project:
 
-### `parse-subscriptions`
+- **`parse-subscriptions`**: `ANTHROPIC_API_KEY`
+- **`send-renewal-reminders`**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` *(Recommended for production delivery: `RESEND_API_KEY`, `EMAIL_FROM`)*
+- **`delete-account`**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- **`send-welcome-email`**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` *(Recommended: `EMAIL_FROM`, `SITE_URL`)*
 
-Required:
+## ⏰ Background Jobs & Reminders
 
-- `ANTHROPIC_API_KEY`
+### Scheduled Delivery (Cron Job)
+Create an active cron job in Supabase to trigger daily renewal reminders:
+- **Job Name**: `daily-renewal-reminders`
+- **Schedule**: `5 6 * * *`  
+*(The verification script includes queries to check if `pg_cron` is installed and the job exists).*
 
-### `send-renewal-reminders`
+### Welcome Email Trigger
+- Once a new authenticated user verifies their account, the frontend invokes the `send-welcome-email` edge function.
+- It records `welcome_email_sent_at` in the user's `user_metadata` to prevent duplicate welcome emails on repeat logins.
 
-Required:
+## 🔄 User Data & Sync Behavior
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+The app architecture allows users to start locally and optionally transition to a cloud account:
 
-Recommended for production email delivery:
+- **Guests**: Complete onboarding, track subscriptions, configure settings, and use the app fully offline through local storage.
+- **Migration**: When signing up, guest persistent data (subscriptions, categories, budget, notification preferences, themes, bill-types) automatically migrates to Supabase.
+- **Authenticated Cloud Sync**: Essential user data and profile configurations are saved and synced immediately. UI states temporarily persisting for the session (like installing a PWA banner) remain isolated on the device.
 
-- `RESEND_API_KEY`
-- `EMAIL_FROM=Cushn <support@cushn.app>`
+## 🧪 Testing & Quality Assurance
 
-### `delete-account`
+- **Continuous Integration (CI)**: GitHub Actions (see `.github/workflows/ci.yml`) automatically run `npm ci`, linting, unit tests, and the production build process.
+- **Realtime Smoke Test**: Verify realtime interactions with live components. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `E2E_TEST_EMAIL`, and `E2E_TEST_PASSWORD` locally, then run `npm run test:realtime`.
 
-Required:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-### `send-welcome-email`
-
-Required:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `RESEND_API_KEY`
-
-Recommended:
-
-- `EMAIL_FROM=Cushn <support@cushn.app>`
-- `SITE_URL=https://cushn.app`
-
-## Scheduled Reminder Delivery
-
-Create one active cron job in Supabase for the reminder function:
-
-- job name: `daily-renewal-reminders`
-- schedule: `5 6 * * *`
-
-The SQL verification script confirms whether `pg_cron` is installed and includes the exact query to verify this job.
-
-## Reminder Status
-
-The renewal reminder pipeline has been validated against the linked Supabase production project:
-
-- in-app reminders queue correctly
-- email reminders send successfully through Resend
-- `send-renewal-reminders` is deployed
-- `daily-renewal-reminders` cron is active
-
-## Welcome Email Trigger
-
-Verified users now have a one-time welcome-email trigger path:
-
-- the frontend invokes `send-welcome-email` after an authenticated, confirmed session is established
-- the edge function sends the welcome email through Resend
-- it records `welcome_email_sent_at` in the user's auth `user_metadata`
-- repeat logins do not resend the welcome email once that field is present
-
-## Realtime Smoke Test
-
-The app depends on realtime updates for:
-
-- `subscriptions`
-- `categories`
-- `budgets`
-- `notification_events`
-- `user_settings`
-
-To run the live smoke test:
-
-```bash
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-E2E_TEST_EMAIL=...
-E2E_TEST_PASSWORD=...
-npm run test:realtime
-```
-
-## Quality Gate
-
-Current CI in [ci.yml](/Users/krishnasathvikmantripragada/subtrackrapp/.github/workflows/ci.yml) runs:
-
-- `npm ci`
-- `npm run lint`
-- `npm run test`
-- `npm run build`
-
-CI does not currently run the live Supabase realtime smoke test.
-
-## App Architecture
-
-- Frontend: React 19 + Vite
-- Local guest storage: Dexie
-- Authenticated sync: Supabase Postgres + Realtime + Edge Functions
-- State: context/hooks, not a centralized global store
-
-## Data Sync Summary
-
-For authenticated users, the important persistent data is database-backed:
-
-- subscriptions
-- categories
-- budgets
-- notification preferences and reminder events
-- cloud settings:
-  - currency
-  - theme preference
-  - bill-type mapping
-- auth metadata used by the app:
-  - `full_name`
-  - `cushn_onboarded`
-  - `welcome_email_sent_at`
-
-Still local by design:
-
-- guest-mode storage before migration
-- temporary UI state
-- session-only flags such as install-banner dismissal
-
-See [ARCHITECTURE.md](/Users/krishnasathvikmantripragada/subtrackrapp/docs/ARCHITECTURE.md).
-
-## Production Checklists
-
-- [RESEND_PROD_CHECKLIST.md](/Users/krishnasathvikmantripragada/subtrackrapp/docs/RESEND_PROD_CHECKLIST.md)
+## 📚 Further Reading
+- [Architecture Details](docs/ARCHITECTURE.md)
+- [Resend Production Checklist](docs/RESEND_PROD_CHECKLIST.md)
