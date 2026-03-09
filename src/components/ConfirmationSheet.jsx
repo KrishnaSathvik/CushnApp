@@ -119,7 +119,10 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                     <div className="flex gap-2 items-center">
                         {subs.length > 0 && (
                             <button
-                                onClick={() => setSubs([])}
+                                onClick={() => {
+                                    setSubs([])
+                                    onClose()
+                                }}
                                 className="interactive-btn cursor-pointer border-none"
                                 style={{
                                     background: T.bgElevated,
