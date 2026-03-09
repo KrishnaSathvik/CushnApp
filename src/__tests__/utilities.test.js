@@ -3,6 +3,7 @@ import { formatCurrency, getCurrencySymbol } from '../lib/formatCurrency'
 import { normalizeToMonthly, normalizeToAnnual } from '../lib/normalizeAmount'
 import { getServiceDomain, getServiceMetadata, SERVICE_DOMAINS } from '../lib/serviceDomains'
 import { BILLING_CYCLES, DEFAULT_CURRENCY, DEFAULT_CATEGORIES, EXAMPLE_INPUTS } from '../lib/constants'
+import { getBillTypeByCategoryName } from '../lib/billTypes'
 import { buildCSV, buildJSON } from '../lib/exportData'
 import { parseCSV } from '../lib/importData'
 import { coerceFutureRenewalDate } from '../../shared/parseNormalization.ts'
@@ -169,6 +170,34 @@ describe('getServiceMetadata', () => {
             canonicalName: 'Runna',
             domain: 'runna.com',
         })
+        expect(getServiceMetadata('apple credit card')).toMatchObject({
+            canonicalName: 'Apple Credit Card',
+            domain: 'card.apple.com',
+        })
+        expect(getServiceMetadata('amex credit card')).toMatchObject({
+            canonicalName: 'Amex Credit Card',
+            domain: 'americanexpress.com',
+        })
+        expect(getServiceMetadata('best buy credit card')).toMatchObject({
+            canonicalName: 'Best Buy Credit Card',
+            domain: 'citibank.com',
+        })
+        expect(getServiceMetadata('chase sapphire reserve')).toMatchObject({
+            canonicalName: 'Chase Sapphire Reserve',
+            domain: 'chase.com',
+        })
+        expect(getServiceMetadata('capital one venture x')).toMatchObject({
+            canonicalName: 'Capital One Venture',
+            domain: 'capitalone.com',
+        })
+        expect(getServiceMetadata('discover it')).toMatchObject({
+            canonicalName: 'Discover It',
+            domain: 'discover.com',
+        })
+        expect(getServiceMetadata('bilt mastercard annual fee')).toMatchObject({
+            canonicalName: 'Bilt Mastercard',
+            domain: 'biltrewards.com',
+        })
     })
 
     it('returns a fallback guess for unknown services', () => {
@@ -226,7 +255,7 @@ describe('parseWithClaude date normalization', () => {
                     name: 'Upstart Loan',
                     amount: 483,
                     cycle: 'monthly',
-                    category: 'Loans',
+                    category: 'Loans & Cards',
                     renewalDate: '2025-03-09',
                 }],
             }),
@@ -241,7 +270,7 @@ describe('parseWithClaude date normalization', () => {
             expect.objectContaining({
                 amount: 483,
                 cycle: 'monthly',
-                category: 'Loans',
+                category: 'Loans & Cards',
                 renewalDate: '2026-03-10',
             }),
         ])
@@ -442,6 +471,218 @@ describe('localParse fallback parsing', () => {
                 amountMissing: true,
             }),
         ])
+    })
+
+    it('prefers parenthesized amounts over statement-style month/day dates', () => {
+        const result = localParse(
+            `- Netflix: Mar 28th (30$)
+- Chat GPT Plus: Mar 29th (30$)
+- Claude Mar 3rd (20$)
+- Electricity: Mar 28th (200$)
+- Rent Payment : Mar 2nd ($750)`,
+            '2026-03-09',
+        )
+
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                name: 'Netflix',
+                amount: 30,
+                renewalDate: '2026-03-28',
+            }),
+            expect.objectContaining({
+                name: 'Chat GPT Plus',
+                amount: 30,
+                renewalDate: '2026-03-29',
+            }),
+            expect.objectContaining({
+                name: 'Claude',
+                amount: 20,
+                renewalDate: '2026-04-03',
+            }),
+            expect.objectContaining({
+                name: 'Electricity',
+                amount: 200,
+                renewalDate: '2026-03-28',
+            }),
+            expect.objectContaining({
+                name: 'Rent',
+                amount: 750,
+                renewalDate: '2026-04-02',
+            }),
+        ]))
+    })
+
+    it('preserves credit-card account names in statement-style lists', () => {
+        const result = localParse(
+            `- Apple Credit Card: Mar 28th (1000$)
+- Amex Credit Card 2: Mar 27th (500$)
+- Capital One Credit Card: Mar 13th (1000$)
+- Best Buy Credit Card: Mar 12th (100$)`,
+            '2026-03-09',
+        )
+
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                name: 'Apple Credit Card',
+                amount: 1000,
+                category: 'Loans & Cards',
+            }),
+            expect.objectContaining({
+                name: 'Amex Credit Card',
+                amount: 500,
+                category: 'Loans & Cards',
+            }),
+            expect.objectContaining({
+                name: 'Capital One Credit Card',
+                amount: 1000,
+                category: 'Loans & Cards',
+            }),
+            expect.objectContaining({
+                name: 'Best Buy Credit Card',
+                amount: 100,
+                category: 'Loans & Cards',
+            }),
+        ]))
+    })
+
+    it('parses mixed statement lists without leaking section headings', () => {
+        const input = `Credit Card Payments
+- • Apple Credit Card: Mar 28th (1000$)
+- • Amex Credit Card 2: Mar 27th (500$)
+- • Capital One Credit Card: Mar 13th (1000$)
+- • Best Buy Credit Card: Mar 12th (100$)
+
+Subscription Services
+- • Netflix: Mar 28th (30$)
+- • Medium: Mar 24th (7$)
+- • Chat GPT Plus: Mar 29th (30$)
+- . Cursor Mar 23rd(20$)
+- . Claude Mar 3rd (20$)
+- . Grok Mar 3rd (8$)
+- . Linkedin Premium Mar 13th (40$)
+- • Adobe: Mar 14th (25$)
+- • Google Drive: Mar 25th (15$)
+- • Hulu & Disney: Mar 2nd (5$)
+
+Utilities and Rent
+- • Electricity: Mar 28th (200$)
+- • Water Payment: Mar 28th (60$)
+- • Car Insurance: Mar 28th (50$)
+- • Wifi Payment : Mar 21st (80$)
+- • Sewage Payment: Mar 15th (22$)
+- • Trash Payment: Mar 12th (30$)
+- • Car Payment: Mar 9th (400$)
+- • T-Mobile Bill: Mar 6th (500$)
+- • Rent Payment : Mar 2nd ($750)
+
+Insurance
+- • Renters Insurance: Mar 25th (15$)
+
+Personal Services
+- • Planet Fitness: Mar 15th (10$)
+
+Investments and Financial Services
+- • Acorns: Mar 2nd (200$)
+- . Upstart Payment: Mar 11th (500$)
+
+Entertainment and Others
+- • AMC Pass: Mar 3rd (22$)
+
+Charity and Transfers
+- • Ketto: Mar 17th (20$)
+- • Ria Transfer: Mar 24th (1000$)`
+
+        const result = localParse(input, '2026-03-09')
+
+        expect(result).toHaveLength(30)
+        expect(result).toEqual(expect.arrayContaining([
+            expect.objectContaining({
+                name: 'Apple Credit Card',
+                amount: 1000,
+                category: 'Loans & Cards',
+                renewalDate: '2026-03-28',
+            }),
+            expect.objectContaining({
+                name: 'Netflix',
+                amount: 30,
+                category: 'Entertainment',
+                renewalDate: '2026-03-28',
+            }),
+            expect.objectContaining({
+                name: 'Chat GPT Plus',
+                amount: 30,
+                category: 'Productivity',
+                renewalDate: '2026-03-29',
+            }),
+            expect.objectContaining({
+                name: 'Cursor',
+                amount: 20,
+                category: 'Dev Tools',
+                renewalDate: '2026-03-23',
+            }),
+            expect.objectContaining({
+                name: 'Claude',
+                amount: 20,
+                category: 'Productivity',
+                renewalDate: '2026-04-03',
+            }),
+            expect.objectContaining({
+                name: 'Google Drive',
+                amount: 15,
+                category: 'Cloud',
+                renewalDate: '2026-03-25',
+            }),
+            expect.objectContaining({
+                name: 'Sewage',
+                amount: 22,
+                category: 'Utilities',
+                renewalDate: '2026-03-15',
+            }),
+            expect.objectContaining({
+                name: 'Car Payment',
+                amount: 400,
+                category: 'Loans & Cards',
+                renewalDate: '2026-03-09',
+            }),
+            expect.objectContaining({
+                name: 'T Mobile Bill',
+                amount: 500,
+                category: 'Utilities',
+                renewalDate: '2026-04-06',
+            }),
+            expect.objectContaining({
+                name: 'Rent',
+                amount: 750,
+                category: 'Utilities',
+                renewalDate: '2026-04-02',
+            }),
+            expect.objectContaining({
+                name: 'Renters Insurance',
+                amount: 15,
+                category: 'Insurance',
+                renewalDate: '2026-03-25',
+            }),
+            expect.objectContaining({
+                name: 'Upstart',
+                amount: 500,
+                category: 'Loans & Cards',
+                renewalDate: '2026-03-11',
+            }),
+            expect.objectContaining({
+                name: 'AMC Pass',
+                amount: 22,
+                category: 'Entertainment',
+                renewalDate: '2026-04-03',
+            }),
+        ]))
+
+        const byName = Object.fromEntries(result.map((item) => [item.name, item]))
+        expect(getBillTypeByCategoryName(byName['Apple Credit Card'].category)).toBe('loan')
+        expect(getBillTypeByCategoryName(byName['Netflix'].category)).toBe('subscription')
+        expect(getBillTypeByCategoryName(byName['Renters Insurance'].category)).toBe('insurance')
+        expect(getBillTypeByCategoryName(byName['Water'].category)).toBe('utility')
+        expect(result.some((item) => item.name === 'Subscription Services')).toBe(false)
+        expect(result.some((item) => item.name === 'Credit Card Payments')).toBe(false)
     })
 })
 

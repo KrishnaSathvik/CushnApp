@@ -8,7 +8,7 @@ export const ALLOWED_CATEGORIES = new Set([
   'Cloud',
   'News & Media',
   'Utilities',
-  'Loans',
+  'Loans & Cards',
   'Insurance',
   'Other',
 ])
@@ -37,6 +37,8 @@ export function normalizeCategory(value: unknown) {
   const category = String(value || '').trim()
   if (ALLOWED_CATEGORIES.has(category)) return category
   if (category === 'News') return 'News & Media'
+  if (category === 'Loans') return 'Loans & Cards'
+  if (category === 'Debt') return 'Loans & Cards'
   return 'Other'
 }
 

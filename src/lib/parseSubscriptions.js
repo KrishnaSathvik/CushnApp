@@ -316,6 +316,26 @@ function detectRenewalDateFromText(lower, currentDate) {
     return baseDate.toISOString().slice(0, 10)
 }
 
+function extractAmountFromText(item) {
+    const parenAmountMatch = item.match(/\(\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*\$\s*\)/i)
+        || item.match(/\(\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*\)/i)
+    if (parenAmountMatch) {
+        return parseFloat(parenAmountMatch[1])
+    }
+
+    const trailingAmountMatch = item.match(/[:\s]\$?(\d+(?:\.\d{1,2})?)\$?(?=\s*$)/)
+    if (trailingAmountMatch) {
+        return parseFloat(trailingAmountMatch[1])
+    }
+
+    const amountMatch = item.match(/(?:^|\s|-)\$?(\d+(?:\.\d{1,2})?)\$?(?=\s|$|\/|[A-Za-z])/)
+    if (amountMatch) {
+        return parseFloat(amountMatch[1])
+    }
+
+    return 0
+}
+
 export function localParse(text, currentDate = new Date().toISOString().slice(0, 10)) {
     const baseItems = String(text || '')
         .split(/[,\n;]+/)
@@ -337,12 +357,10 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
 
     return items.map((item) => {
         const sub = { name: '', rawName: '', amount: 0, cycle: 'monthly', category: 'Other', renewalDate: '' }
+        const isCreditAccountLine = /\bcredit\s+card\b/i.test(item)
+        const preservePaymentInName = /\bcar\s+payment\b/i.test(item)
 
-        // Extract amount: "$15.99", "15.99", "15", "20$", "-19.99"
-        const amountMatch = item.match(/(?:^|\s|-)\$?(\d+(?:\.\d{1,2})?)\$?(?=\s|$|\/|[A-Za-z])/);
-        if (amountMatch) {
-            sub.amount = parseFloat(amountMatch[1])
-        }
+        sub.amount = extractAmountFromText(item)
 
         // Extract cycle
         const lower = item.toLowerCase();
@@ -355,12 +373,22 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
 
         // Extract name: remove the price, the cycle, the date, and known categories
         let cleanedName = item
+            .replace(/\(\s*\$?\s*\d+(?:\.\d{1,2})?\s*\$?\s*\)/g, '') // remove parenthesized amounts
             .replace(/\$?\b\d+(?:\.\d{1,2})?\b\$?/g, '') // remove numbers/prices
+            .replace(/\b(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\b/gi, '') // remove month names
             .replace(/(monthly|annual|yearly|weekly|quarterly|\/mo|every|month(?! end)|end of month|month end)/gi, '') // remove cycle words and 'month end'
             .replace(/\b([1-9]|[12][0-9]|3[01])(?:st|nd|rd|th)?\b/gi, '') // remove ordinal days
-            .replace(/(subscription|plan|account|app|fee|\bfor\b|\bof\b|\bon\b|\bbucks?\b|\blol\b|\bforgot\b|\bforget\b|\bstill\b|\bcharging\b|\bcharged\b)/gi, '') // remove conversational fillers
-            .replace(/\b(autopay|auto pay|autopmt|autopayment|payment|debit|credit|card|visa|mastercard|mc|amex|discover|ach|withdrawal|purchase|pos|checkcard)\b/gi, '')
+            .replace(/\b(subscription|plan|account|app|fee|for|of|on|bucks?|lol|forgot|forget|still|charging|charged)\b/gi, '') // remove conversational fillers
+            .replace(
+                isCreditAccountLine
+                    ? /\b(autopay|auto pay|autopmt|autopayment|payment|debit|visa|mastercard|mc|discover|ach|withdrawal|purchase|pos|checkcard)\b/gi
+                    : preservePaymentInName
+                        ? /\b(autopay|auto pay|autopmt|autopayment|debit|credit|card|visa|mastercard|mc|amex|discover|ach|withdrawal|purchase|pos|checkcard)\b/gi
+                    : /\b(autopay|auto pay|autopmt|autopayment|payment|debit|credit|card|visa|mastercard|mc|amex|discover|ach|withdrawal|purchase|pos|checkcard)\b/gi,
+                '',
+            )
             .replace(/(entertainment|dev\s*tools?|health|productivity|cloud|news|other)/gi, '') // remove category hints
+            .replace(/[:•.-]+/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
 
@@ -384,20 +412,30 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
             ...enriched,
             amountMissing: !(Number.isFinite(enriched.amount) && enriched.amount > 0),
         }
-    }).filter((s) => s.name && (s.amount > 0 || (s.amountMissing && s.name !== 'Unknown Subscription' && (s.vendorDomain || s.vendorCanonicalName || s.vendorConfidence >= 0.75))));
+    }).filter((s) => s.name && (
+        s.amount > 0
+        || (
+            s.amountMissing
+            && s.name !== 'Unknown Subscription'
+            && (
+                s.vendorConfidence >= 0.75
+                || (s.vendorMatchType && s.vendorMatchType !== 'fallback')
+            )
+        )
+    ));
 }
 
 // Category inference from service name
 const CATEGORY_MAP = {
-    Entertainment: ['netflix', 'spotify', 'hulu', 'disney', 'hbo', 'peacock', 'paramount', 'crunchyroll', 'twitch', 'youtube', 'apple tv', 'music', 'streaming', 'entertainment', 'film', 'movie', 'tv'],
-    'Dev Tools': ['github', 'figma', 'vercel', 'netlify', 'linear', 'jira', 'postman', 'sentry', 'datadog', 'aws', 'azure', 'digital ocean', 'heroku', 'dev', 'code', 'tools', 'hosting', 'design'],
+    Entertainment: ['netflix', 'spotify', 'hulu', 'disney', 'hbo', 'peacock', 'paramount', 'crunchyroll', 'twitch', 'youtube', 'apple tv', 'music', 'streaming', 'entertainment', 'film', 'movie', 'tv', 'amc'],
+    'Dev Tools': ['github', 'figma', 'vercel', 'netlify', 'linear', 'jira', 'postman', 'sentry', 'datadog', 'aws', 'azure', 'digital ocean', 'heroku', 'dev', 'code', 'tools', 'hosting', 'design', 'cursor'],
     Health: ['headspace', 'calm', 'myfitnesspal', 'peloton', 'whoop', 'health', 'fitness', 'gym', 'workout', 'meditation'],
-    Productivity: ['claude', 'chatgpt', 'perplexity', 'slack', 'zoom', 'loom', 'todoist', 'obsidian', 'notion', 'craft', 'openai', 'ai', 'productivity'],
-    Cloud: ['icloud', 'dropbox', 'google one', 'onedrive', 'box', 'apple one', 'storage', 'cloud', 'backup'],
-    'News & Media': ['nytimes', 'new york times', 'medium', 'substack', 'athletic', 'economist', 'news', 'media'],
-    Utilities: ['rent', 'mortgage', 'electric', 'water', 'gas', 'internet', 'phone', 'cell', 'wifi', 'utility', 'trash', 'sewer', 'pg&e', 'comcast', 'verizon', 'att'],
-    Loans: ['loan', 'student', 'mortgage', 'car payment', 'auto', 'debt', 'credit card'],
+    Productivity: ['claude', 'chatgpt', 'chat gpt', 'perplexity', 'slack', 'zoom', 'loom', 'todoist', 'obsidian', 'notion', 'craft', 'openai', 'ai', 'productivity', 'grok', 'linkedin premium', 'adobe'],
+    Cloud: ['icloud', 'dropbox', 'google one', 'onedrive', 'box', 'apple one', 'storage', 'cloud', 'backup', 'google drive'],
+    'News & Media': ['nytimes', 'new york times', 'medium', 'substack', 'athletic', 'economist', 'news', 'media', 'linkedin'],
     Insurance: ['insurance', 'geico', 'state farm', 'progressive', 'health insurance', 'car insurance', 'renters', 'homeowners'],
+    Utilities: ['rent', 'mortgage', 'electric', 'water', 'gas', 'internet', 'phone', 'cell', 'wifi', 'utility', 'trash', 'sewer', 'sewage', 'pg&e', 'comcast', 'verizon', 'att', 't-mobile'],
+    'Loans & Cards': ['loan', 'student', 'car payment', 'auto', 'debt', 'credit card', 'card payment', 'upstart', 'affirm', 'klarna', 'afterpay'],
 }
 
 export function inferCategory(text) {

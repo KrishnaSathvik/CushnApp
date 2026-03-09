@@ -30,7 +30,7 @@ export const DEFAULT_CATEGORIES = [
     { name: 'Cloud', color: '#A78BFA', icon: 'cloud', isDefault: true },
     { name: 'News & Media', color: '#FBBF24', icon: 'newspaper', isDefault: true },
     { name: 'Utilities', color: '#F97316', icon: 'zap', isDefault: true },
-    { name: 'Loans', color: '#A78BFA', icon: 'landmark', isDefault: true },
+    { name: 'Loans & Cards', color: '#A78BFA', icon: 'landmark', isDefault: true },
     { name: 'Insurance', color: '#60A5FA', icon: 'shield', isDefault: true },
     { name: 'Other', color: '#6B7280', icon: 'tag', isDefault: true },
 ]
@@ -39,7 +39,7 @@ export const DEFAULT_CATEGORIES = [
 export const BILL_TYPES = {
     subscription: { id: 'subscription', label: 'Subscription', color: '#0D9488', icon: 'plus-circle', shape: 'circle' },
     utility: { id: 'utility', label: 'Utility', color: '#F97316', icon: 'zap', shape: 'diamond' },
-    loan: { id: 'loan', label: 'Loan', color: '#A78BFA', icon: 'landmark', shape: 'square' },
+    loan: { id: 'loan', label: 'Loans & Cards', color: '#A78BFA', icon: 'landmark', shape: 'square' },
     insurance: { id: 'insurance', label: 'Insurance', color: '#60A5FA', icon: 'shield', shape: 'shield' },
 }
 
@@ -47,7 +47,7 @@ export const BILL_TYPES = {
 export function getBillTypeFromCategoryName(categoryName) {
     const name = (categoryName || '').toLowerCase()
     if (name.includes('utilit')) return BILL_TYPES.utility
-    if (name.includes('loan')) return BILL_TYPES.loan
+    if (name.includes('loan') || name.includes('card')) return BILL_TYPES.loan
     if (name.includes('insurance')) return BILL_TYPES.insurance
     return BILL_TYPES.subscription
 }
