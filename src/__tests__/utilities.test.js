@@ -98,6 +98,11 @@ describe('getServiceDomain', () => {
         expect(getServiceDomain('Netflix')).toBe('netflix.com')
         expect(getServiceDomain('GitHub')).toBe('github.com')
         expect(getServiceDomain('Claude Pro')).toBe('claude.ai')
+        expect(getServiceDomain('Audible')).toBe('audible.com')
+        expect(getServiceDomain('Spotify Family')).toBe('spotify.com')
+        expect(getServiceDomain('YouTube TV')).toBe('tv.youtube.com')
+        expect(getServiceDomain('Raycast')).toBe('raycast.com')
+        expect(getServiceDomain('MUBI')).toBe('mubi.com')
     })
 
     it('is case-insensitive', () => {
@@ -133,6 +138,36 @@ describe('getServiceMetadata', () => {
         expect(getServiceMetadata('spotify usa')).toMatchObject({
             canonicalName: 'Spotify',
             domain: 'spotify.com',
+        })
+    })
+
+    it('matches services with regex characters safely', () => {
+        expect(getServiceMetadata('I still pay for Disney+ bundle')).toMatchObject({
+            canonicalName: 'Disney+',
+            domain: 'disneyplus.com',
+        })
+        expect(getServiceMetadata('My Copy.ai workspace')).toMatchObject({
+            canonicalName: 'Copy.ai',
+            domain: 'copy.ai',
+        })
+    })
+
+    it('matches added high-signal service variants', () => {
+        expect(getServiceMetadata('spotify family')).toMatchObject({
+            canonicalName: 'Spotify Family',
+            domain: 'spotify.com',
+        })
+        expect(getServiceMetadata('audible still charging')).toMatchObject({
+            canonicalName: 'Audible',
+            domain: 'audible.com',
+        })
+        expect(getServiceMetadata('superhuman mail')).toMatchObject({
+            canonicalName: 'Superhuman Mail',
+            domain: 'superhuman.com',
+        })
+        expect(getServiceMetadata('runna training plan')).toMatchObject({
+            canonicalName: 'Runna',
+            domain: 'runna.com',
         })
     })
 

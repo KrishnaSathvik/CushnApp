@@ -6,8 +6,11 @@ export const SERVICE_DOMAINS = {
     // Entertainment & Streaming
     'Netflix': 'netflix.com',
     'Spotify': 'spotify.com',
+    'Spotify Family': 'spotify.com',
     'YouTube': 'youtube.com',
+    'YouTube Music': 'music.youtube.com',
     'YouTube Premium': 'youtube.com',
+    'YouTube TV': 'tv.youtube.com',
     'Hulu': 'hulu.com',
     'Disney+': 'disneyplus.com',
     'Apple TV+': 'tv.apple.com',
@@ -25,11 +28,13 @@ export const SERVICE_DOMAINS = {
     'SiriusXM': 'siriusxm.com',
     'SoundCloud': 'soundcloud.com',
     'Amazon Music': 'music.amazon.com',
+    'Audible': 'audible.com',
     'AMC+': 'amcplus.com',
     'Discovery+': 'discoveryplus.com',
     'Starz': 'starz.com',
     'Showtime': 'showtime.com',
     'Shudder': 'shudder.com',
+    'MUBI': 'mubi.com',
 
     // Gaming
     'Xbox': 'xbox.com',
@@ -51,6 +56,7 @@ export const SERVICE_DOMAINS = {
     'Figma': 'figma.com',
     'Vercel': 'vercel.com',
     'Netlify': 'netlify.com',
+    'Raycast': 'raycast.com',
     'Linear': 'linear.app',
     'Notion': 'notion.so',
     'Jira': 'atlassian.com',
@@ -74,6 +80,7 @@ export const SERVICE_DOMAINS = {
     'ChatGPT': 'chatgpt.com',
     'ChatGPT Pro': 'chatgpt.com',
     'ChatGPT Plus': 'chatgpt.com',
+    'Microsoft Copilot Pro': 'copilot.microsoft.com',
     'OpenAI': 'openai.com',
     'Perplexity': 'perplexity.ai',
     'Midjourney': 'midjourney.com',
@@ -83,6 +90,7 @@ export const SERVICE_DOMAINS = {
     'Copilot': 'copilot.microsoft.com',
     'Anthropic': 'anthropic.com',
     'Groq': 'groq.com',
+    'Grok': 'x.ai',
     'Hugging Face': 'huggingface.co',
     'v0': 'v0.dev',
     'Bolt': 'bolt.new',
@@ -101,6 +109,8 @@ export const SERVICE_DOMAINS = {
 
     // Work & Productivity
     'Slack': 'slack.com',
+    'Superhuman': 'superhuman.com',
+    'Superhuman Mail': 'superhuman.com',
     'Zoom': 'zoom.us',
     'Loom': 'loom.com',
     'Todoist': 'todoist.com',
@@ -119,6 +129,7 @@ export const SERVICE_DOMAINS = {
 
     // Cloud & Storage
     'Apple One': 'apple.com',
+    'Apple Arcade': 'apple.com',
     'iCloud': 'icloud.com',
     'iCloud+': 'icloud.com',
     'Dropbox': 'dropbox.com',
@@ -144,8 +155,10 @@ export const SERVICE_DOMAINS = {
     'Anytime Fitness': 'anytimefitness.com',
     '24 Hour Fitness': '24hourfitness.com',
     'Strava': 'strava.com',
+    'Runna': 'runna.com',
     'Oura': 'ouraring.com',
     'Fitbit': 'fitbit.com',
+    'ClassPass': 'classpass.com',
 
     // News & Media
     'New York Times': 'nytimes.com',
@@ -259,6 +272,7 @@ export const SERVICE_DOMAINS = {
 
     // Subscription Boxes & Meal Kits
     'HelloFresh': 'hellofresh.com',
+    'Kindle Unlimited': 'amazon.com',
     'Blue Apron': 'blueapron.com',
     'EveryPlate': 'everyplate.com',
     'Factor': 'factor75.com',
@@ -296,6 +310,7 @@ export function getServiceMetadata(name) {
 
     // Case-insensitive match
     const lower = name.toLowerCase()
+    const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
     // First pass: exact case-insensitive match
     let match = Object.entries(SERVICE_DOMAINS).find(
@@ -329,7 +344,7 @@ export function getServiceMetadata(name) {
     const containsMatchKey = sortedKeys.find(key => {
         const keyLower = key.toLowerCase()
         // Ensure it matches as a whole word, not part of another word
-        const regex = new RegExp(`\\b${keyLower}\\b`)
+        const regex = new RegExp(`(^|[^a-z0-9])${escapeRegex(keyLower)}([^a-z0-9]|$)`)
         return regex.test(lower)
     })
     if (containsMatchKey) {
