@@ -26,7 +26,7 @@ export default function AddScreen() {
     const navigate = useNavigate()
     const { T, theme } = useTheme()
     const { currency } = useSettings()
-    const { addSubscription, categories, subscriptions } = useSubscriptions()
+    const { addSubscription, addSubscriptionsBulk, categories, subscriptions } = useSubscriptions()
     const [mode, setMode] = useState('text') // 'text' | 'manual' | 'voice'
     const [input, setInput] = useState('')
     const [parsing, setParsing] = useState(false)
@@ -137,22 +137,27 @@ export default function AddScreen() {
         if (isConfirmingParsed) return
         setIsConfirmingParsed(true)
         try {
-            for (const sub of subs) {
-                const catId = getCategoryIdByName(sub.category)
-                await addSubscription({
-                    name: sub.name,
-                    amount: sub.amount,
-                    cycle: sub.cycle,
-                    categoryId: catId,
-                    renewalDate: sub.renewalDate,
-                    notes: '',
-                    currency,
-                    vendorDomain: sub.vendorDomain,
-                    vendorConfidence: sub.vendorConfidence,
-                    vendorMatchType: sub.vendorMatchType,
-                })
-            }
+            const items = subs.map((sub) => ({
+                name: sub.name,
+                amount: sub.amount,
+                cycle: sub.cycle,
+                categoryId: getCategoryIdByName(sub.category),
+                renewalDate: sub.renewalDate,
+                notes: '',
+                currency,
+                vendorDomain: sub.vendorDomain,
+                vendorConfidence: sub.vendorConfidence,
+                vendorMatchType: sub.vendorMatchType,
+            }))
+            await addSubscriptionsBulk(items)
+            setParsed(null)
             navigate('/')
+        } catch (err) {
+            console.error('Confirm parsed subscriptions error:', err)
+            setParseNotice({
+                type: 'error',
+                text: 'Could not save parsed subscriptions right now. Try again.',
+            })
         } finally {
             setIsConfirmingParsed(false)
         }

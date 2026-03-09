@@ -138,15 +138,14 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                             </button>
                         )}
                         <button
-                            onClick={() => {
+                            onClick={async () => {
                                 if (hasInvalidDrafts) return
                                 setIsConfirming(true)
-                                const finalized = [...subs]
-                                setSubs([])
-                                setTimeout(() => {
-                                    onClose()
-                                    onConfirm(finalized)
-                                }, finalized.length * 50 + 300)
+                                try {
+                                    await onConfirm([...subs])
+                                } finally {
+                                    setIsConfirming(false)
+                                }
                             }}
                             disabled={subs.length === 0 || hasInvalidDrafts}
                             className="interactive-btn cursor-pointer border-none"
@@ -160,7 +159,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                 opacity: subs.length > 0 && !hasInvalidDrafts ? 1 : 0.5,
                             }}
                         >
-                            Confirm All
+                            {isConfirming ? 'Saving...' : 'Confirm All'}
                         </button>
                     </div>
                 </div>
@@ -176,13 +175,13 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{
                                     opacity: 0,
-                                    x: isConfirming ? 0 : -200,
-                                    y: isConfirming ? 100 : 0,
-                                    scale: isConfirming ? 0.8 : 1,
+                                    x: -200,
+                                    y: 0,
+                                    scale: 1,
                                     height: 0,
                                     marginBottom: 0
                                 }}
-                                transition={{ delay: isConfirming ? i * 0.05 : 0, duration: 0.3 }}
+                                transition={{ duration: 0.3 }}
                                 style={{
                                     background: T.bgSurface,
                                     borderRadius: 16,
