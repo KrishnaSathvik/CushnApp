@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import PageShell from './layout/PageShell'
 
@@ -8,10 +7,9 @@ export default function PublicHeader() {
   const { T } = useTheme()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const [menuOpen, setMenuOpen] = useState(false)
 
-  const isLanding = pathname === '/landing'
-  const featureHref = isLanding ? '#features' : '/landing#features'
+  const isLanding = pathname === '/' || pathname === '/landing'
+  const featureHref = isLanding ? '#features' : '/#features'
 
   return (
     <nav
@@ -34,7 +32,7 @@ export default function PublicHeader() {
           gap: 12,
         }}
       >
-        <Link to="/landing" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
           <img
             src="/logo.png"
             alt="Cushn Logo"
@@ -101,77 +99,7 @@ export default function PublicHeader() {
           </button>
         </div>
 
-        <button
-          className="interactive-btn md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-        >
-          {menuOpen ? <X size={22} color={T.fgMedium} /> : <Menu size={22} color={T.fgMedium} />}
-        </button>
       </PageShell>
-
-      {menuOpen && (
-        <div className="md:hidden" style={{ borderTop: `1px solid ${T.border}` }}>
-          <PageShell
-            width="wide"
-            style={{
-              paddingTop: 12,
-              paddingBottom: 16,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
-            <a
-              href={featureHref}
-              onClick={() => setMenuOpen(false)}
-              className="interactive-btn font-mono"
-              style={{ fontSize: 11, color: T.fgMedium, textDecoration: 'none', fontWeight: 600 }}
-            >
-              Features
-            </a>
-            <button
-              onClick={() => {
-                setMenuOpen(false)
-                navigate('/login')
-              }}
-              className="interactive-btn cursor-pointer border-none font-mono"
-              style={{
-                height: 36,
-                padding: '0 12px',
-                borderRadius: 999,
-                background: T.bgElevated,
-                color: T.fgHigh,
-                border: `1px solid ${T.border}`,
-                fontSize: 11,
-                textAlign: 'left',
-              }}
-            >
-              Log in
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false)
-                navigate('/signup')
-              }}
-              className="interactive-btn cursor-pointer border-none font-mono"
-              style={{
-                height: 36,
-                padding: '0 12px',
-                borderRadius: 999,
-                background: T.accentSoft,
-                color: T.accentPrimary,
-                border: `1px solid ${T.accentPrimary}`,
-                fontSize: 11,
-                textAlign: 'left',
-              }}
-            >
-              Create account
-            </button>
-          </PageShell>
-        </div>
-      )}
     </nav>
   )
 }

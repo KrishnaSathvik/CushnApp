@@ -8,7 +8,7 @@ import { getRouteSeo } from '../src/lib/seo.js'
 const DIST_DIR = path.resolve(process.cwd(), 'dist')
 const TEMPLATE_PATH = path.join(DIST_DIR, 'index.html')
 const SITE_URL = process.env.VITE_SITE_URL || 'https://cushn.app'
-const ROUTES = ['/landing', '/privacy', '/terms', '/contact']
+const ROUTES = ['/', '/landing', '/privacy', '/terms', '/contact']
 
 function upsertMetaTag(html, attrName, attrValue, content) {
   const pattern = new RegExp(`<meta[^>]*${attrName}=["']${attrValue}["'][^>]*>`, 'i')

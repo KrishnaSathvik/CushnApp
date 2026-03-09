@@ -6,6 +6,7 @@ import { ThemeProvider } from '../context/ThemeContext'
 
 function PublicRouteContent({ pathname }) {
   switch (pathname) {
+    case '/':
     case '/landing':
       return <LandingPage />
     case '/privacy':

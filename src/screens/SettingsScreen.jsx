@@ -386,7 +386,7 @@ export default function SettingsScreen() {
         try {
             setIsLoggingOut(true)
             await logout()
-            navigate('/landing', { replace: true })
+            navigate('/', { replace: true })
         } catch (err) {
             console.error('Logout failed:', err)
             showToast('error', err?.message || 'Failed to log out')
@@ -401,7 +401,7 @@ export default function SettingsScreen() {
             await deleteAccount()
             setShowDeleteAccountConfirm(false)
             setDeleteAccountConfirmText('')
-            navigate('/landing', { replace: true })
+            navigate('/', { replace: true })
         } catch (err) {
             console.error('Account deletion failed:', err)
             showToast('error', err?.message || 'Failed to delete account')

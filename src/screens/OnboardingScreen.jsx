@@ -47,7 +47,7 @@ export default function OnboardingScreen() {
   const hasRemoteOnboarded = session?.user?.user_metadata?.cushn_onboarded;
 
   if (isLoading) return null;
-  if (!isLoggedIn) return <Navigate to="/landing" replace />;
+  if (!isLoggedIn) return <Navigate to="/" replace />;
   if (hasLocalOnboarded || (isAuthenticated && hasRemoteOnboarded)) {
     return <Navigate to="/" replace />;
   }

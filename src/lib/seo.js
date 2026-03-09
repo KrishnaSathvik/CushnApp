@@ -3,6 +3,11 @@ const DEFAULT_DESCRIPTION = 'Your financial cushion against subscription creep w
 const DEFAULT_IMAGE = '/og-image.png'
 
 const PUBLIC_ROUTE_META = {
+  '/': {
+    title: `${SITE_NAME} | Your spending cushion`,
+    description: 'Paste messy subscription notes, upload statements, or talk naturally. Cushn uses AI to extract vendors, amounts, billing cadence, reminders, budgets, and analytics.',
+    robots: 'index,follow',
+  },
   '/landing': {
     title: `${SITE_NAME} | Your spending cushion`,
     description: 'Stop bleeding money on forgotten subscriptions with AI-powered tracking, renewal reminders, budget monitoring, and spending analytics.',

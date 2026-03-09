@@ -74,7 +74,7 @@ function PageLoader() {
 function ProtectedRoute({ children }) {
   const { isLoggedIn, isLoading } = useAuth();
   if (isLoading) return null;
-  if (!isLoggedIn) return <Navigate to="/landing" replace />;
+  if (!isLoggedIn) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -93,7 +93,7 @@ function OnboardingGate({ children }) {
   const { isLoggedIn, isLoading, session } = useAuth();
   const [renderedAt] = useState(() => Date.now());
   if (isLoading) return null;
-  if (!isLoggedIn) return <Navigate to="/landing" replace />;
+  if (!isLoggedIn) return <Navigate to="/" replace />;
 
   const hasLocalOnboarded =
     localStorage.getItem(ONBOARDED_KEY) ||
@@ -118,6 +118,32 @@ function OnboardingGate({ children }) {
   }
 
   return children;
+}
+
+function RootRoute() {
+  const { isLoggedIn, isLoading, session } = useAuth();
+  const [renderedAt] = useState(() => Date.now());
+
+  if (isLoading) return null;
+  if (!isLoggedIn) return <LandingPage />;
+
+  const hasLocalOnboarded =
+    localStorage.getItem(ONBOARDED_KEY) ||
+    localStorage.getItem(LEGACY_ONBOARDED_KEY);
+  const hasRemoteOnboarded = session?.user?.user_metadata?.cushn_onboarded;
+  const isOldAccount =
+    session?.user?.created_at &&
+    renderedAt - new Date(session.user.created_at).getTime() > 1000 * 60 * 60;
+
+  if (!hasRemoteOnboarded && !isOldAccount && !hasLocalOnboarded) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (!hasLocalOnboarded) {
+    localStorage.setItem(ONBOARDED_KEY, "true");
+  }
+
+  return <HomeScreen />;
 }
 
 function ScrollManager() {
@@ -162,9 +188,7 @@ function AppShell() {
             <Route
               path="/landing"
               element={
-                <PublicOnlyRoute>
-                  <LandingPage />
-                </PublicOnlyRoute>
+                <Navigate to="/" replace />
               }
             />
             <Route
@@ -224,11 +248,7 @@ function AppShell() {
             {/* Protected app pages — require login + onboarding */}
             <Route
               path="/"
-              element={
-                <OnboardingGate>
-                  <HomeScreen />
-                </OnboardingGate>
-              }
+              element={<RootRoute />}
             />
             <Route
               path="/add"
@@ -288,7 +308,7 @@ function AppShell() {
             />
 
             {/* Fallback */}
-            <Route path="*" element={<Navigate to="/landing" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </main>

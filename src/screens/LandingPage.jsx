@@ -5,6 +5,7 @@ import {
   Wallet,
   PieChart,
   Mic,
+  Bot,
   Calendar,
   Bell,
   Paperclip,
@@ -24,7 +25,11 @@ import DashboardPreviewMock from "../components/ui/DashboardPreviewMock";
 function TemplateHeroV1() {
   const { T } = useTheme();
   const navigate = useNavigate();
-
+  const exampleInputs = [
+    "Netflix 15.99 monthly, Adobe annual, ChatGPT on the 12th",
+    "Voice notes work too",
+    "Statements and receipts can be reviewed before import",
+  ];
 
   return (
     <section
@@ -69,9 +74,9 @@ function TemplateHeroV1() {
         >
           <div>
             <PageIntro
-              eyebrow="Command center"
-              title="A cleaner command center for every subscription."
-              subtitle="Capture what you pay for, see upcoming renewals clearly, and keep recurring spend under control without another spreadsheet."
+              eyebrow="AI subscription capture"
+              title="Paste messy notes. Cushn turns them into subscriptions."
+              subtitle="Notes, voice, receipts, and statements become structured vendors, amounts, billing cadence, reminders, and renewal tracking in seconds."
               titleStyle={{
                 fontSize: PUBLIC_TYPE.heroTitle,
                 lineHeight: 1.06,
@@ -85,7 +90,58 @@ function TemplateHeroV1() {
               }}
             />
 
+            <div
+              className="motion-rise-in motion-delay-2"
+              style={{
+                marginTop: 16,
+                display: "grid",
+                gap: 10,
+                maxWidth: 560,
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  width: "fit-content",
+                  background: `${T.accentPrimary}14`,
+                  border: `1px solid ${T.accentPrimary}33`,
+                  color: T.accentPrimary,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                <Bot size={14} />
+                AI parsing for notes, voice, receipts, and statements
+              </div>
 
+              <div style={{ display: "grid", gap: 8 }}>
+                {exampleInputs.map((item, idx) => (
+                  <div
+                    key={item}
+                    className="font-mono"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 12px",
+                      borderRadius: 14,
+                      border: `1px solid ${T.border}`,
+                      background: idx === 1 ? `${T.semCloud}12` : T.bgElevated,
+                      color: T.fgMedium,
+                      fontSize: 11,
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {idx === 1 ? <Mic size={14} color={T.semCloud} /> : <Sparkles size={14} color={T.accentPrimary} />}
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div
               className="motion-rise-in motion-delay-3"
@@ -108,9 +164,29 @@ function TemplateHeroV1() {
                   boxShadow: `0 0 24px ${T.accentPrimary}44`,
                 }}
               >
-                Start tracking free <ArrowRight size={14} />
+                Start tracking <ArrowRight size={14} />
+              </button>
+              <button
+                onClick={() => navigate("/signup")}
+                className="interactive-btn cursor-pointer font-mono"
+                style={{
+                  height: 38,
+                  padding: "0 16px",
+                  background: T.bgElevated,
+                  color: T.fgHigh,
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  border: `1px solid ${T.border}`,
+                }}
+              >
+                Create account <ChevronRight size={14} />
               </button>
             </div>
+
           </div>
         </AppHeroCard>
 
@@ -125,20 +201,20 @@ function TemplateFeaturesV1() {
   const cards = [
     {
       icon: Sparkles,
-      title: "Capture in plain English",
-      desc: "Paste a sentence and let the add flow parse the vendor, amount, and billing cadence.",
+      title: "AI parsing for messy inputs",
+      desc: "Paste rough notes, copied statements, or fragmented text and let Cushn extract the vendor, amount, and billing cadence.",
       color: T.accentPrimary,
     },
     {
       icon: Mic,
-      title: "Add by voice",
-      desc: "Dictate subscriptions on the go when typing is slower than speaking.",
+      title: "Talk to it like a human",
+      desc: "Use voice input when typing is slower than speaking and let the parser turn casual speech into structured subscriptions.",
       color: T.semCloud,
     },
     {
       icon: Paperclip,
       title: "Review statement imports",
-      desc: "Upload PDF, CSV, XLSX, TXT, or image files and confirm findings before anything is added.",
+      desc: "Upload PDF, CSV, XLSX, TXT, or image files and review AI-detected subscriptions before anything is added.",
       color: T.semInfo,
     },
     {
@@ -257,7 +333,7 @@ function TemplateCTAV1() {
               Start before the next renewal sneaks through.
             </div>
             <div style={{ color: T.fgMedium, fontSize: 13, marginTop: 6 }}>
-              Try the tracker in guest mode first, then create an account when you want sync across devices.
+              Try the AI capture flow in guest mode first, then create an account when you want sync across devices.
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -277,7 +353,7 @@ function TemplateCTAV1() {
                 gap: 8,
               }}
             >
-              Start tracking free <ChevronRight size={14} />
+              Start tracking <ChevronRight size={14} />
             </button>
             <button
               onClick={() => navigate("/signup")}

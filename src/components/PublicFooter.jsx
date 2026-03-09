@@ -10,7 +10,7 @@ export default function PublicFooter() {
     {
       title: 'Product',
       links: [
-        { label: 'Features', href: '/landing#features', external: false },
+        { label: 'Features', href: '/#features', external: false },
         { label: 'Guest mode', href: '/guest', external: false },
         { label: 'Create account', href: '/signup', external: false },
       ],
