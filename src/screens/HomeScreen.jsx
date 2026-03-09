@@ -360,7 +360,7 @@ export default function HomeScreen() {
                                                         color: T.fgMedium,
                                                     }}
                                                 >
-                                                    Due on <span className="font-mono" style={{ color: T.fgHigh }}>{formatDueDate(sub.renewalDate)}</span>
+                                                    Due on <span style={{ color: T.fgHigh }}>{formatDueDate(sub.renewalDate)}</span>
                                                 </div>
                                             </div>
                                         ))}

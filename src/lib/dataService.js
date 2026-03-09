@@ -135,7 +135,7 @@ async function fetchBudgetViaRest(userId, accessToken) {
 const isCloud = (userId) => userId && isSupabaseConfigured() && supabase
 const DEFAULT_NOTIFICATION_PREFERENCES = {
     inAppEnabled: true,
-    emailEnabled: false,
+    emailEnabled: true,
     daysBefore: [1, 3],
     timezone: 'UTC',
 }
@@ -152,6 +152,22 @@ function chunkArray(items, chunkSize = 10) {
         chunks.push(items.slice(i, i + chunkSize))
     }
     return chunks
+}
+
+async function triggerImmediateDueEmailReminders(userId) {
+    if (!isCloud(userId) || !supabase?.functions?.invoke) return
+
+    try {
+        const { error } = await supabase.functions.invoke('send-due-reminder-emails', {
+            body: {},
+        })
+
+        if (error) {
+            console.error('Immediate due reminder email dispatch failed:', error)
+        }
+    } catch (error) {
+        console.error('Immediate due reminder email dispatch failed:', error)
+    }
 }
 
 function buildReminderEventsForSubscription(userId, subscription, preferences) {
@@ -355,6 +371,7 @@ export async function addSubscription(userId, data) {
     const subscription = mapSubFromSupabase(inserted)
     const preferences = await getNotificationPreferences(userId)
     await syncReminderEventsForSubscriptions(userId, [subscription], preferences)
+    void triggerImmediateDueEmailReminders(userId)
     return subscription
 }
 
@@ -381,6 +398,7 @@ export async function addSubscriptionsBulk(userId, items) {
     const subscriptions = insertedRows.map(mapSubFromSupabase)
     const preferences = await getNotificationPreferences(userId)
     await syncReminderEventsForSubscriptions(userId, subscriptions, preferences)
+    void triggerImmediateDueEmailReminders(userId)
     return subscriptions
 }
 
@@ -400,6 +418,7 @@ export async function updateSubscription(userId, id, data) {
     const subscription = mapSubFromSupabase(updated)
     const preferences = await getNotificationPreferences(userId)
     await syncReminderEventsForSubscriptions(userId, [subscription], preferences)
+    void triggerImmediateDueEmailReminders(userId)
     return subscription
 }
 
@@ -604,7 +623,7 @@ function mapNotificationPrefsFromSupabase(row) {
     if (!row) return { ...DEFAULT_NOTIFICATION_PREFERENCES }
     return {
         inAppEnabled: row.in_app_enabled ?? true,
-        emailEnabled: row.email_enabled ?? false,
+        emailEnabled: row.email_enabled ?? true,
         daysBefore: row.days_before || [1, 3],
         timezone: row.timezone || 'UTC',
     }
@@ -632,7 +651,7 @@ export async function saveNotificationPreferences(userId, data) {
     const payload = {
         user_id: userId,
         in_app_enabled: data.inAppEnabled ?? true,
-        email_enabled: data.emailEnabled ?? false,
+        email_enabled: data.emailEnabled ?? true,
         days_before: data.daysBefore || [1, 3],
         timezone: data.timezone || 'UTC',
         updated_at: new Date().toISOString(),
@@ -648,6 +667,7 @@ export async function saveNotificationPreferences(userId, data) {
     const preferences = mapNotificationPrefsFromSupabase(updated)
     const subscriptions = await getSubscriptions(userId)
     await syncReminderEventsForSubscriptions(userId, subscriptions, preferences)
+    void triggerImmediateDueEmailReminders(userId)
     return preferences
 }
 

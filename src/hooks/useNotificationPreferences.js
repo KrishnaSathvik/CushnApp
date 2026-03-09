@@ -5,7 +5,7 @@ import { getNotificationPreferences, saveNotificationPreferences } from '../lib/
 const GUEST_PREF_KEY = 'subtrackr_notify_pref'
 const DEFAULT_PREFS = {
     inAppEnabled: true,
-    emailEnabled: false,
+    emailEnabled: true,
     daysBefore: [1, 3],
     timezone: 'UTC',
 }

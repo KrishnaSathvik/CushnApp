@@ -11,7 +11,7 @@ const LEGACY_ONBOARDED_KEY = 'subtrackr_onboarded'
 const GUEST_NOTIFICATION_PREFERENCES_KEY = 'subtrackr_notify_pref'
 const DEFAULT_NOTIFICATION_PREFERENCES = {
     inAppEnabled: true,
-    emailEnabled: false,
+    emailEnabled: true,
     daysBefore: [1, 3],
     timezone: 'UTC',
 }

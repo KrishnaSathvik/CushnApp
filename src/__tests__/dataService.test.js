@@ -186,7 +186,7 @@ describe('dataService cloud/guest behavior', () => {
     const result = await getNotificationPreferences(null)
     expect(result).toMatchObject({
       inAppEnabled: true,
-      emailEnabled: false,
+      emailEnabled: true,
       daysBefore: [1, 3],
       timezone: 'UTC',
     })
