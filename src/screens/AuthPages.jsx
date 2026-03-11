@@ -480,7 +480,7 @@ export function SignUpPage() {
       valuePoints={[
         "Sync guest-mode subscriptions across all devices",
         "Get email reminders before renewals hit",
-        "Keep your duplicate and trim-candidate insights",
+        "Keep your duplicate and review insights",
       ]}
     >
       <AuthPageHeader

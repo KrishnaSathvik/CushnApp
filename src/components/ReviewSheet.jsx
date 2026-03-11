@@ -208,7 +208,7 @@ export default function ReviewSheet({
                             <span style={{ fontSize: 14, fontWeight: 700 }}>Remind me later</span>
                         </div>
                         <div style={{ fontSize: 12, lineHeight: 1.6, marginTop: 6 }}>
-                            Hide this candidate for 30 days, then surface it again.
+                            Hide this review for 30 days, then surface it again.
                         </div>
                     </button>
                 </div>

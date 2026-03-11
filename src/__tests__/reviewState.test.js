@@ -29,7 +29,7 @@ describe('reviewState', () => {
     }, new Date('2026-03-29T12:00:00Z'))).toBe(false)
   })
 
-  it('suppresses reviewed and snoozed trim candidates from resurfacing', () => {
+  it('suppresses reviewed and snoozed reconsideration picks from resurfacing', () => {
     const subscriptions = [
       {
         id: 'reviewed',

@@ -37,7 +37,7 @@ The blueprint is mostly a sequencing problem, not a greenfield product effort.
 
 - The public front door exists and needs repositioning, not replacement.
 - The add flow already supports text, voice, and file parsing; it needs stronger onboarding usage and a better summary moment.
-- The analytics page already has the right primitives for duplicates, trim candidates, and trends; the main gaps are section order, actionability, and category quality.
+- The analytics page already has the right primitives for duplicates, subscriptions worth reconsidering, and trends; the main gaps are section order, actionability, and category quality.
 - The app already has a subscription detail route; that reduces the cost of adding review/cancel flows.
 - The largest foundational risk is category accuracy. Until that is fixed, landing claims about insights remain weaker than they should be.
 
@@ -76,7 +76,7 @@ Acceptance criteria:
 
 - no debt, loan, transfer, or insurance vendors land in `Cloud`
 - donut chart output reads plausibly on test data
-- trim candidates exclude debt and non-cancellable essentials by default
+- subscriptions worth reconsidering exclude debt and non-cancellable essentials by default
 
 Risks:
 
@@ -107,7 +107,7 @@ Acceptance criteria:
 
 - the hero communicates outcome within one screen without mentioning parsing first
 - the primary CTA promises discovery, not work
-- duplicate detection and trim-candidate intelligence are visible above the fold
+- duplicate detection and reconsideration intelligence are visible above the fold
 
 ### Sprint 3: Onboarding And Guest Flow
 
@@ -181,7 +181,7 @@ Implementation:
   - add a quick-wins card bridging to analytics/detail actions
   - default sort library by due date or amount instead of grouping-only emphasis
 - [src/screens/AnalyticsScreen.jsx](/Users/krishnasathvikmantripragada/subtrackrapp/src/screens/AnalyticsScreen.jsx)
-  - reorder sections: actionable insights, trim candidates, duplicate watch, trends, then passive charts
+  - reorder sections: actionable insights, subscriptions worth reconsidering, duplicate watch, trends, then passive charts
   - annualize all impact numbers
   - add buttons into detail/review flows
   - connect duplicate savings cards to the underlying subscriptions
@@ -262,7 +262,7 @@ Track at minimum:
 - time to first populated dashboard
 - audit completion rate
 - guest-to-auth conversion
-- trim-candidate review actions
+- reconsideration review actions
 - duplicate-resolution actions
 
 ### Testing

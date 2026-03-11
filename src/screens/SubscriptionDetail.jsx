@@ -420,7 +420,7 @@ export default function SubscriptionDetail() {
                                         ? `Looks similar to ${duplicate.name}. Review both before the next renewal.`
                                         : trimCandidate
                                             ? 'This category often produces non-essential recurring spend.'
-                                            : 'No duplicate or trim warning detected right now.'}
+                                            : 'No duplicate or review warning detected right now.'}
                                 </div>
                             </div>
                         </div>

@@ -754,7 +754,7 @@ function FeaturesSection() {
             items={[
               "Monthly and annual recurring totals",
               "Duplicate vendor detection",
-              "Trim candidates and spend trend insights",
+              "Subscriptions worth reconsidering and spend trend insights",
             ]}
           />
           <TierCard
