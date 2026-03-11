@@ -190,6 +190,7 @@ export const SERVICE_DOMAINS = {
     'Google Fi': 'fi.google.com',
     'Mint Mobile': 'mintmobile.com',
     'Visible': 'visible.com',
+    'Starlink': 'starlink.com',
 
 
     // Insurance & Loans
@@ -264,6 +265,9 @@ export const SERVICE_DOMAINS = {
     'CarMax': 'carmax.com',
     'Toyota Financial': 'toyotafinancial.com',
     'Ford Credit': 'ford.com',
+    'Venmo': 'venmo.com',
+    'Cash App': 'cash.app',
+    'Zelle': 'zellepay.com',
 
     // Security & Design
     '1Password': '1password.com',
@@ -273,11 +277,16 @@ export const SERVICE_DOMAINS = {
     'NordVPN': 'nordvpn.com',
     'ExpressVPN': 'expressvpn.com',
     'Surfshark': 'surfshark.com',
+    'Ring': 'ring.com',
+    'Nest': 'store.google.com',
     'Adobe': 'adobe.com',
     'Adobe Creative Cloud': 'adobe.com',
+    'Adobe Lightroom': 'adobe.com',
     'Canva': 'canva.com',
     'Grammarly': 'grammarly.com',
     'Duolingo': 'duolingo.com',
+    'Skillshare': 'skillshare.com',
+    'MasterClass': 'masterclass.com',
 
     // Food & Delivery
     'Uber One': 'uber.com',
@@ -291,6 +300,7 @@ export const SERVICE_DOMAINS = {
     'Walmart+': 'walmart.com',
     'Costco': 'costco.com',
     'Target Circle 360': 'target.com',
+    'Pocket Casts': 'pocketcasts.com',
 
     // Movie Theaters
     'AMC Stubs A-List': 'amctheatres.com',

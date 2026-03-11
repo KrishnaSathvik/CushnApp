@@ -130,6 +130,14 @@ export const CATEGORY_COLORS = {
     productivity: '#0D9488',
     news: '#FBBF24',
     cloud: '#A78BFA',
+    debt: '#8B5CF6',
+    utilities: '#F97316',
+    insurance: '#3B82F6',
+    auto: '#6366F1',
+    gaming: '#EF4444',
+    shopping: '#EC4899',
+    food: '#F59E0B',
+    money: '#14B8A6',
     other: '#6B7280',
 }
 
@@ -140,6 +148,14 @@ export const CATEGORY_COLORS_LIGHT = {
     productivity: '#0F766E',  // Deep Teal
     news: '#EA580C',          // Burnt Orange
     cloud: '#7C3AED',         // Vivid Violet
+    debt: '#7C3AED',          // Strong Violet
+    utilities: '#EA580C',     // Burnt Orange
+    insurance: '#2563EB',     // Blue
+    auto: '#4F46E5',          // Indigo
+    gaming: '#DC2626',        // Red
+    shopping: '#DB2777',      // Pink
+    food: '#D97706',          // Amber
+    money: '#0D9488',         // Teal
     other: '#52525B',         // Zinc 600 for contrast
 }
 
@@ -154,5 +170,13 @@ export function getCategoryColor(name, isDark = true) {
     if (key.includes('product')) return colors.productivity
     if (key.includes('news') || key.includes('media')) return colors.news
     if (key.includes('cloud') || key.includes('storage')) return colors.cloud
+    if (key.includes('debt') || key.includes('loan') || key.includes('credit')) return colors.debt
+    if (key.includes('utilit') || key.includes('electric') || key.includes('water') || key.includes('internet')) return colors.utilities
+    if (key.includes('insur')) return colors.insurance
+    if (key.includes('auto') || key.includes('transport') || key.includes('car')) return colors.auto
+    if (key.includes('gaming') || key.includes('game')) return colors.gaming
+    if (key.includes('shop') || key.includes('retail')) return colors.shopping
+    if (key.includes('food') || key.includes('delivery') || key.includes('meal')) return colors.food
+    if (key.includes('money') || key.includes('transfer') || key.includes('remit') || key.includes('payment')) return colors.money
     return colors.other
 }
