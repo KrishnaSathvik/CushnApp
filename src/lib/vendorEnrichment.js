@@ -1,4 +1,5 @@
 import { getServiceMetadata } from './serviceDomains'
+import { inferCategoryFromVendor, normalizeCategoryName } from '../../shared/categoryModel.ts'
 
 const COMPANY_SUFFIX_RE = /\b(inc|llc|ltd|corp|co|company|digital|services|service|subscription|subscr|payment|payments|online|web|app|usa)\b/gi
 
@@ -45,6 +46,7 @@ export function enrichVendorName(name) {
             vendorDomain: metadata.domain,
             vendorConfidence: metadata.confidence,
             vendorMatchType: metadata.matchType,
+            recommendedCategory: inferCategoryFromVendor(metadata.canonicalName, metadata.domain),
             logoUrl: metadata.domain
                 ? `https://www.google.com/s2/favicons?domain=${metadata.domain}&sz=64`
                 : null,
@@ -65,6 +67,7 @@ export function enrichVendorName(name) {
         vendorDomain: null,
         vendorConfidence: 0.35,
         vendorMatchType: 'fallback',
+        recommendedCategory: inferCategoryFromVendor(normalizedName, null),
         logoUrl: null,
     }
 }
@@ -93,14 +96,17 @@ export function findPotentialDuplicate(candidate, existing = []) {
 
 export function enrichSubscriptionCandidate(item) {
     const vendor = enrichVendorName(item?.name || '')
+    const category = normalizeCategoryName(item?.category || vendor.recommendedCategory)
     return {
         ...item,
         name: vendor.normalizedName || item?.name || '',
         rawName: item?.rawName || item?.name || '',
+        category,
         vendorCanonicalName: vendor.vendorCanonicalName,
         vendorDomain: vendor.vendorDomain,
         vendorConfidence: vendor.vendorConfidence,
         vendorMatchType: vendor.vendorMatchType,
+        recommendedCategory: vendor.recommendedCategory,
         logoUrl: vendor.logoUrl,
     }
 }

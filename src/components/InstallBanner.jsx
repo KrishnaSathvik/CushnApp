@@ -70,10 +70,10 @@ export default function InstallBanner() {
                     <Download size={18} color={T.accentPrimary} />
                 </div>
                 <div className="flex-1">
-                    <div className="font-mono" style={{ fontSize: 12, color: T.fgHigh, fontWeight: 600 }}>
+                    <div className="font-mono" style={{ fontSize: 12, color: T.fgPrimary, fontWeight: 600 }}>
                         Install Cushn
                     </div>
-                    <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle }}>
+                    <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary }}>
                         Add to home screen for the best experience
                     </div>
                 </div>
@@ -93,7 +93,7 @@ export default function InstallBanner() {
                     className="cursor-pointer shrink-0"
                     style={{ background: 'transparent', border: 'none', padding: 4 }}
                 >
-                    <X size={14} color={T.fgSubtle} />
+                    <X size={14} color={T.fgTertiary} />
                 </button>
             </motion.div>
         </AnimatePresence>

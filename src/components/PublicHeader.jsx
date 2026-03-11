@@ -42,7 +42,7 @@ export default function PublicHeader() {
             style={{
               fontSize: 17,
               fontWeight: 700,
-              color: T.fgHigh,
+              color: T.fgPrimary,
               letterSpacing: -0.5,
             }}
           >
@@ -56,7 +56,7 @@ export default function PublicHeader() {
             className="interactive-btn font-mono"
             style={{
               fontSize: 11,
-              color: T.fgMedium,
+              color: T.fgSecondary,
               textDecoration: 'none',
               fontWeight: 600,
               letterSpacing: 0.3,
@@ -75,7 +75,7 @@ export default function PublicHeader() {
               padding: '0 12px',
               borderRadius: 999,
               background: 'transparent',
-              color: T.fgMedium,
+              color: T.fgSecondary,
               border: `1px solid ${T.border}`,
               fontSize: 11,
             }}

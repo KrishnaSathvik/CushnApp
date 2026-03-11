@@ -20,7 +20,8 @@ export default function SubscriptionRow({
     onPause,
     onDuplicate,
     variant = 'default',
-    groupBy = 'type'
+    groupBy = 'type',
+    reviewBadgeLabel = null,
 }) {
     const { T } = useTheme()
     const { currency, billTypeByCategory } = useSettings()
@@ -66,7 +67,10 @@ export default function SubscriptionRow({
     })
     const billTypeInfo = getBillTypeInfo(billTypeKey)
     const typeColor = billTypeInfo.color
-    const rowColor = groupBy === 'type' ? categoryColor || T.fgSubtle : typeColor
+    const rowColor = groupBy === 'type' ? categoryColor || T.fgTertiary : typeColor
+    const urgencyColor = daysLeft !== null && daysLeft !== undefined
+        ? (daysLeft <= 0 ? T.semDanger : daysLeft <= 2 ? T.semWarning : daysLeft <= 7 ? '#EAB308' : null)
+        : null
 
     return (
         <div style={{ position: 'relative', overflow: 'hidden' }}>
@@ -102,9 +106,11 @@ export default function SubscriptionRow({
                         padding: variant === 'grouped' ? '0 14px' : '0 16px',
                         minHeight: variant === 'grouped' ? 56 : 64,
                         borderBottom: `1px solid ${T.border}`,
-                        borderLeft: variant === 'grouped' ? `3px solid ${typeColor}33` : 'none',
+                        borderLeft: variant === 'grouped'
+                            ? `3px solid ${(urgencyColor || typeColor)}55`
+                            : 'none',
                         opacity: isPaused ? 0.5 : 1,
-                        background: 'transparent',
+                        background: urgencyColor && variant === 'grouped' ? `${urgencyColor}10` : 'transparent',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = T.bgHover)}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -121,7 +127,7 @@ export default function SubscriptionRow({
                     <div className="flex-1 overflow-hidden">
                         <div
                             className={variant === 'grouped' ? "font-medium truncate" : "font-medium truncate"}
-                            style={{ fontSize: variant === 'grouped' ? 13 : 14, color: T.fgHigh, fontWeight: 600 }}
+                            style={{ fontSize: variant === 'grouped' ? 13 : 14, color: T.fgPrimary, fontWeight: 600 }}
                         >
                             {name}
                         </div>
@@ -135,13 +141,16 @@ export default function SubscriptionRow({
                             ) : (
                                 <>
                                     <Chip color={categoryColor} size={9}>{categoryName}</Chip>
-                                    <span className="font-mono" style={{ fontSize: 9, color: T.fgSubtle }}>
+                                    <span className="font-mono" style={{ fontSize: 9, color: T.fgTertiary }}>
                                         {cycle}
                                     </span>
                                 </>
                             )}
                             {isPaused && (
-                                <Chip color={T.fgSubtle} size={8}>paused</Chip>
+                                <Chip color={T.fgTertiary} size={8}>paused</Chip>
+                            )}
+                            {reviewBadgeLabel && (
+                                <Chip color={reviewBadgeLabel === 'Reviewed' ? T.semSuccess : T.semWarning} size={8}>{reviewBadgeLabel}</Chip>
                             )}
                         </div>
                     </div>
@@ -153,7 +162,7 @@ export default function SubscriptionRow({
                     >
                         <div
                             className="font-mono font-bold"
-                            style={{ fontSize: variant === 'grouped' ? 13 : 15, color: T.fgHigh, letterSpacing: -0.2 }}
+                            style={{ fontSize: variant === 'grouped' ? 13 : 15, color: T.fgPrimary, letterSpacing: -0.2 }}
                         >
                             {formatCurrency(displayAmount, currency)}{displaySuffix}
                         </div>
@@ -162,7 +171,7 @@ export default function SubscriptionRow({
                                 className="font-mono mt-0.5"
                                 style={{
                                     fontSize: 9,
-                                    color: daysLeft <= 5 ? T.semDanger : daysLeft <= 10 ? T.semWarning : T.fgSubtle,
+                                    color: urgencyColor || T.fgTertiary,
                                 }}
                             >
                                 {daysLeft}d{variant === 'grouped' ? '' : ' left'}
@@ -219,13 +228,13 @@ function ContextItem({ icon: Icon, label, onClick, danger, T }) {
             style={{
                 background: 'transparent', border: 'none',
                 padding: '9px 12px', borderRadius: 12,
-                fontSize: 12, color: danger ? T.semDanger : T.fgHigh,
+                fontSize: 12, color: danger ? T.semDanger : T.fgPrimary,
                 textAlign: 'left', fontFamily: 'monospace',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = T.bgHover)}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
-            <Icon size={14} color={danger ? T.semDanger : T.fgMedium} />
+            <Icon size={14} color={danger ? T.semDanger : T.fgSecondary} />
             {label}
         </button>
     )

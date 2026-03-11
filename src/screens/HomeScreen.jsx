@@ -1,16 +1,19 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Search, Plus, ChevronDown, ChevronRight, Zap, Landmark, Shield, Film, Code, HeartPulse, Lightbulb, Newspaper, Tag, Cloud } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Search, Plus, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import useSubscriptions from '../hooks/useSubscriptions'
 import useBudget from '../hooks/useBudget'
-import ArcGauge from '../components/ArcGauge'
 import SubscriptionRow from '../components/SubscriptionRow'
 import { useTheme } from '../context/ThemeContext'
 import { useSettings } from '../context/SettingsContext'
 import { formatCurrency } from '../lib/formatCurrency'
 import { normalizeToMonthly } from '../lib/normalizeAmount'
-import { getBillTypeInfo, resolveBillTypeKey } from '../lib/billTypes'
+import { buildVendorFingerprint, enrichSubscriptionCandidate } from '../lib/vendorEnrichment'
+import { trackEvent } from '../lib/analytics'
+import { DEFAULT_BUDGET } from '../lib/constants'
+import { useReviewSheet } from '../context/ReviewSheetContext'
+import { hasReviewedBadge, isSubscriptionCountedInSpend, shouldSurfaceReview } from '../lib/reviewState'
 
 function formatDueDate(dateString) {
     if (!dateString) return ''
@@ -23,43 +26,33 @@ function formatDueDate(dateString) {
     })
 }
 
-function getIconComp(name) {
-    switch (name || '') {
-        case 'film': return Film
-        case 'code': return Code
-        case 'heart-pulse': return HeartPulse
-        case 'lightbulb': return Lightbulb
-        case 'cloud': return Cloud
-        case 'newspaper': return Newspaper
-        case 'zap': return Zap
-        case 'plus-circle': return Plus
-        case 'landmark': return Landmark
-        case 'shield': return Shield
-        default: return Tag
-    }
-}
 export default function HomeScreen() {
     const navigate = useNavigate()
+    const location = useLocation()
     const { T } = useTheme()
-    const { currency, billTypeByCategory } = useSettings()
+    const { currency } = useSettings()
+    const { openReviewSheet } = useReviewSheet()
     const {
         monthlyTotal, annualTotal, nextRenewal,
         loading, getCategoryName, getCategoryColorById,
-        daysUntilRenewal, subscriptions, categories,
+        daysUntilRenewal, subscriptions,
         deleteSubscription, pauseSubscription, addSubscription,
     } = useSubscriptions()
     const { budget } = useBudget()
     const { userName } = useAuth()
     const [showSearch, setShowSearch] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
-    const [groupBy, setGroupBy] = useState('type')
-    const [expandedGroups, setExpandedGroups] = useState({})
+    const [sortBy, setSortBy] = useState('dueDate')
+    const [dismissedCelebration, setDismissedCelebration] = useState(false)
+    const onboardingSummary = location.state?.onboardingSummary
 
-    const toggleGroup = (key) => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))
-
-    const activeCount = subscriptions.filter(s => s.status === 'active').length
+    const activeCount = subscriptions.filter((s) => isSubscriptionCountedInSpend(s)).length
     const nextDays = nextRenewal ? daysUntilRenewal(nextRenewal.renewalDate) : null
-    const activeSubs = useMemo(() => subscriptions.filter(s => s.status === 'active'), [subscriptions])
+    const activeSubs = useMemo(() => subscriptions.filter((s) => isSubscriptionCountedInSpend(s)), [subscriptions])
+    const surfacedTrimCandidates = useMemo(
+        () => activeSubs.filter((sub) => shouldSurfaceReview(sub, getCategoryName, activeSubs)),
+        [activeSubs, getCategoryName],
+    )
     const dueSoonSubs = useMemo(() => (
         activeSubs
             .map((sub) => ({ sub, days: daysUntilRenewal(sub.renewalDate) }))
@@ -67,78 +60,115 @@ export default function HomeScreen() {
             .sort((a, b) => a.days - b.days)
             .slice(0, 4)
     ), [activeSubs, daysUntilRenewal])
-    const budgetGoal = budget.monthlyGoal || 200
-    const budgetPct = budgetGoal > 0 ? monthlyTotal / budgetGoal : 0
-    const budgetTone = budgetPct < 0.7 ? 'On track' : budgetPct < 1 ? 'Near limit' : 'Over budget'
-    const budgetToneColor = budgetPct < 0.7 ? T.finGain : budgetPct < 1 ? T.semWarning : T.finLoss
-    const budgetRemaining = Math.max(budgetGoal - monthlyTotal, 0)
-    const gaugeDetails = [
+    const dueSoonTotal = useMemo(() => (
+        dueSoonSubs.reduce((sum, { sub }) => sum + normalizeToMonthly(sub.amount, sub.cycle), 0)
+    ), [dueSoonSubs])
+    const spendGlowColor = dueSoonSubs.length > 0 ? T.semWarning : T.accentPrimary
+    const primaryStats = [
         {
-            title: 'Budget left',
-            value: formatCurrency(budgetRemaining, currency).replace('.00', ''),
-            tone: budgetRemaining > 0 ? `${Math.round(Math.max(0, 1 - budgetPct) * 100)}% available` : '0% available',
-            color: budgetRemaining > 0 ? T.finGain : T.finLoss,
-        },
-        {
-            title: 'Annual total',
-            value: formatCurrency(annualTotal, currency).replace('.00', ''),
-            tone: 'projected spend',
-            color: T.finChart4,
-        },
-        {
-            title: 'Next renewal',
-            value: nextDays !== null ? `${nextDays}d` : 'None',
-            tone: nextDays !== null ? 'until next charge' : 'nothing upcoming',
+            title: 'Due this week',
+            value: formatCurrency(dueSoonTotal, currency).replace('.00', ''),
+            tone: dueSoonSubs.length > 0
+                ? `${dueSoonSubs.length} renewal${dueSoonSubs.length === 1 ? '' : 's'} coming up`
+                : 'No renewals in the next 7 days',
             color: T.semWarning,
         },
         {
-            title: 'Active subscriptions',
-            value: `${activeCount}`,
-            tone: 'currently running',
+            title: 'Annual run rate',
+            value: formatCurrency(annualTotal, currency).replace('.00', ''),
+            tone: 'Projected recurring spend',
             color: T.accentPrimary,
+        },
+        {
+            title: 'Next charge',
+            value: nextDays !== null ? `${nextDays}d` : 'Clear',
+            tone: nextRenewal ? nextRenewal.name : 'Nothing upcoming',
+            color: nextDays !== null && nextDays <= 2 ? T.semWarning : T.accentPrimary,
         },
     ]
 
-    // Compute Groups
-    const groupData = useMemo(() => {
-        const activeSubs = subscriptions.filter(s => s.status === 'active')
+    const sortedSubscriptions = useMemo(() => {
         let filtered = activeSubs
-        if (searchTerm) filtered = filtered.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
-
-        const data = {}
-        filtered.forEach(sub => {
-            const catName = getCategoryName(sub.categoryId)
-            const typeKey = resolveBillTypeKey({
-                categoryId: sub.categoryId,
-                categoryName: catName,
-                billTypeByCategory,
+        if (searchTerm.trim()) {
+            const query = searchTerm.toLowerCase()
+            filtered = filtered.filter((item) => {
+                const categoryName = getCategoryName(item.categoryId).toLowerCase()
+                return item.name.toLowerCase().includes(query) || categoryName.includes(query)
             })
-            const key = groupBy === 'type' ? typeKey : (catName === 'Other' ? 'Other' : catName)
-            if (!data[key]) data[key] = []
-            data[key].push(sub)
-        })
-
-        // Sort items inside groups by days left closely approaching
-        Object.keys(data).forEach(k => {
-            data[k].sort((a, b) => {
-                const da = daysUntilRenewal(a.renewalDate) ?? 9999
-                const db = daysUntilRenewal(b.renewalDate) ?? 9999
-                return da - db
-            })
-        })
-        return data
-    }, [subscriptions, groupBy, searchTerm, getCategoryName, daysUntilRenewal, billTypeByCategory])
-    const hasSearchNoResults = searchTerm.trim().length > 0 && Object.keys(groupData).length === 0 && activeCount > 0
-
-    const getGroupMeta = (groupKey) => {
-        if (groupBy === 'type') {
-            const info = getBillTypeInfo(groupKey)
-            return { label: info.label, color: info.color, icon: info.icon }
-        } else {
-            const cat = categories.find(c => c.name === groupKey)
-            return { label: groupKey, color: cat ? cat.color : T.fgSubtle, icon: cat ? cat.icon : 'tag' }
         }
-    }
+
+        const next = [...filtered]
+        next.sort((left, right) => {
+            if (sortBy === 'amount') {
+                return normalizeToMonthly(right.amount, right.cycle) - normalizeToMonthly(left.amount, left.cycle)
+            }
+
+            if (sortBy === 'category') {
+                const leftCategory = getCategoryName(left.categoryId)
+                const rightCategory = getCategoryName(right.categoryId)
+                return leftCategory.localeCompare(rightCategory) || left.name.localeCompare(right.name)
+            }
+
+            const leftDays = daysUntilRenewal(left.renewalDate) ?? Number.MAX_SAFE_INTEGER
+            const rightDays = daysUntilRenewal(right.renewalDate) ?? Number.MAX_SAFE_INTEGER
+            return leftDays - rightDays
+        })
+        return next
+    }, [activeSubs, daysUntilRenewal, getCategoryName, searchTerm, sortBy])
+    const hasSearchNoResults = searchTerm.trim().length > 0 && sortedSubscriptions.length === 0 && activeCount > 0
+
+    const duplicateInsight = useMemo(() => {
+        const vendorBuckets = new Map()
+        activeSubs.forEach((sub) => {
+            const enriched = enrichSubscriptionCandidate(sub)
+            const key = buildVendorFingerprint({
+                name: enriched.name,
+                vendorDomain: enriched.vendorDomain,
+            })
+            if (!vendorBuckets.has(key)) {
+                vendorBuckets.set(key, { subscriptions: [], total: 0 })
+            }
+            const bucket = vendorBuckets.get(key)
+            bucket.subscriptions.push(sub)
+            bucket.total += normalizeToMonthly(sub.amount, sub.cycle)
+        })
+
+        return [...vendorBuckets.values()]
+            .filter((bucket) => bucket.subscriptions.length > 1)
+            .sort((a, b) => b.total - a.total)[0] || null
+    }, [activeSubs])
+
+    const showBudgetPrompt = Boolean(onboardingSummary) && Number(budget.monthlyGoal || DEFAULT_BUDGET) === DEFAULT_BUDGET
+
+    const quickWin = duplicateInsight
+        ? {
+            title: 'Duplicate vendor spotted',
+            description: `${duplicateInsight.subscriptions.length} entries could be costing ${formatCurrency(duplicateInsight.total, currency).replace('.00', '')}/month.`,
+            cta: 'Review duplicates',
+            action: () => {
+                trackEvent('home_quick_win_clicked', {
+                    kind: 'duplicate_vendor',
+                    duplicate_count: duplicateInsight.subscriptions.length,
+                })
+                openReviewSheet(duplicateInsight.subscriptions[0])
+            },
+            tone: T.semWarning,
+        }
+            : surfacedTrimCandidates[0]
+            ? {
+                title: `${surfacedTrimCandidates[0].name}: worth the cost?`,
+                description: `Review ${surfacedTrimCandidates[0].name} and decide whether to keep it, cancel it, or snooze it.`,
+                cta: 'Review subscription',
+                action: () => {
+                    trackEvent('home_quick_win_clicked', {
+                        kind: 'trim_candidate',
+                        subscription_id: surfacedTrimCandidates[0].id,
+                    })
+                    openReviewSheet(surfacedTrimCandidates[0])
+                },
+                tone: T.accentPrimary,
+            }
+            : null
 
     // Handlers
     const handleDelete = async (id) => await deleteSubscription(id)
@@ -158,12 +188,13 @@ export default function HomeScreen() {
             categoryName={getCategoryName(sub.categoryId)}
             categoryColor={getCategoryColorById(sub.categoryId)}
             daysLeft={daysUntilRenewal(sub.renewalDate)}
-            onClick={() => navigate(`/detail/${sub.id}`)}
+            onClick={() => (shouldSurfaceReview(sub, getCategoryName, activeSubs) ? openReviewSheet(sub) : navigate(`/detail/${sub.id}`))}
             onDelete={handleDelete}
             onPause={handlePause}
             onDuplicate={handleDuplicate}
             variant="grouped"
-            groupBy={groupBy}
+            groupBy="type"
+            reviewBadgeLabel={hasReviewedBadge(sub) ? 'Reviewed' : shouldSurfaceReview(sub, getCategoryName, activeSubs) ? 'Review' : null}
         />
     )
 
@@ -183,7 +214,7 @@ export default function HomeScreen() {
                             <p className="page-eyebrow">Dashboard</p>
                             <h1 className="page-title">Home</h1>
                             <p className="page-subtitle" style={{ marginTop: 6 }}>
-                                {userName ? `Welcome back, ${userName}. ` : ''}Your subscriptions, renewals, and budget status in one command-center view.
+                                {userName ? `Welcome back, ${userName}. ` : ''}Your recurring spend, near-term renewals, and best next action.
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -192,10 +223,69 @@ export default function HomeScreen() {
                                 className="interactive-btn flex items-center justify-center rounded-full border-none cursor-pointer"
                                 style={{ width: 42, height: 42, background: T.bgGlass, border: `1px solid ${T.border}` }}
                             >
-                                <Search size={16} color={T.fgHigh} />
+                                <Search size={16} color={T.fgPrimary} />
                             </button>
                         </div>
                     </div>
+
+                    {onboardingSummary && !dismissedCelebration && (
+                        <div
+                            className="surface-card-muted"
+                            style={{
+                                marginTop: 18,
+                                padding: '14px 16px',
+                                border: `1px solid ${T.accentPrimary}33`,
+                                background: `${T.accentPrimary}10`,
+                            }}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="section-label" style={{ color: T.accentPrimary }}>First audit complete</div>
+                                    <div style={{ fontSize: 16, color: T.fgPrimary, fontWeight: 700, marginTop: 8 }}>
+                                        You added {onboardingSummary.count} subscription{onboardingSummary.count === 1 ? '' : 's'} totaling {formatCurrency(onboardingSummary.monthly, currency).replace('.00', '')}/month.
+                                    </div>
+                                    <div style={{ fontSize: 13, color: T.fgSecondary, lineHeight: 1.6, marginTop: 8 }}>
+                                        That is {formatCurrency(onboardingSummary.annual, currency).replace('.00', '')}/year. Want to find more you might have missed?
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setDismissedCelebration(true)}
+                                    className="interactive-btn cursor-pointer font-mono"
+                                    style={{
+                                        border: `1px solid ${T.border}`,
+                                        background: T.bgSurface,
+                                        color: T.fgSecondary,
+                                        borderRadius: 999,
+                                        padding: '6px 10px',
+                                        fontSize: 10,
+                                        height: 'fit-content',
+                                    }}
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                            <button
+                                onClick={() => navigate('/add')}
+                                className="interactive-btn cursor-pointer"
+                                style={{
+                                    marginTop: 12,
+                                    border: 'none',
+                                    borderRadius: 12,
+                                    padding: '10px 14px',
+                                    background: T.accentPrimary,
+                                    color: '#fff',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                }}
+                            >
+                                Find more subscriptions
+                                <Plus size={14} />
+                            </button>
+                        </div>
+                    )}
 
                     <div
                         className="surface-card-muted"
@@ -214,20 +304,31 @@ export default function HomeScreen() {
                                 inset: 'auto -8% 18% auto',
                                 width: 180,
                                 height: 180,
-                                background: `${budgetToneColor}16`,
+                                background: `${spendGlowColor}16`,
                                 filter: 'blur(44px)',
                                 borderRadius: '50%',
                             }}
                         />
-                        <div className="section-label">Spend rhythm</div>
-                        <p className="page-subtitle" style={{ marginTop: 8, textAlign: 'center' }}>
-                            {budgetTone} for {new Date().toLocaleString('default', { month: 'long' })}.
-                        </p>
-                        <div className="flex justify-center" style={{ marginTop: 10, position: 'relative' }}>
-                            <ArcGauge spent={monthlyTotal} budget={budgetGoal} currency={currency} size={250} />
+                        <div className="section-label">Recurring spend</div>
+                        <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+                            <div>
+                                <div
+                                    className="font-mono font-bold"
+                                    style={{ fontSize: 'clamp(2.3rem, 8vw, 4rem)', color: T.fgPrimary, letterSpacing: -1.6 }}
+                                >
+                                    {formatCurrency(monthlyTotal, currency).replace('.00', '')}
+                                    <span style={{ fontSize: '0.35em', color: T.fgTertiary, marginLeft: 6 }}>/mo</span>
+                                </div>
+                                <div
+                                    className="font-mono"
+                                    style={{ fontSize: 14, color: T.accentPrimary, fontWeight: 700, marginTop: 6 }}
+                                >
+                                    {formatCurrency(annualTotal, currency).replace('.00', '')}/year projected
+                                </div>
+                            </div>
                         </div>
-                        <div className="stat-grid" style={{ marginTop: 8 }}>
-                            {gaugeDetails.map((item) => (
+                        <div className="stat-grid" style={{ marginTop: 14 }}>
+                            {primaryStats.map((item) => (
                                 <div
                                     key={item.title}
                                     className="surface-card-muted"
@@ -241,26 +342,9 @@ export default function HomeScreen() {
                                     <div className="metric-value font-mono font-bold" style={{ fontSize: 18, color: item.color, marginTop: 8 }}>
                                         {item.value}
                                     </div>
-                                    <div style={{ fontSize: 12, color: T.fgMedium, marginTop: 4 }}>{item.tone}</div>
+                                    <div style={{ fontSize: 12, color: T.fgSecondary, marginTop: 4 }}>{item.tone}</div>
                                 </div>
                             ))}
-                        </div>
-                        <div
-                            className="surface-card-muted"
-                            style={{
-                                padding: '12px 14px',
-                                marginTop: 10,
-                                border: `1px solid ${T.border}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: 12,
-                            }}
-                        >
-                            <span className="section-label">Monthly goal</span>
-                            <span className="font-mono" style={{ fontSize: 12, color: budgetToneColor }}>
-                                {formatCurrency(budgetGoal, currency).replace('.00', '')}
-                            </span>
                         </div>
                     </div>
                 </section>
@@ -280,7 +364,7 @@ export default function HomeScreen() {
                         >
                             <div>
                                 <div className="section-label">Sync status</div>
-                                <div style={{ fontSize: 13, color: T.fgMedium, marginTop: 4 }}>
+                                <div style={{ fontSize: 13, color: T.fgSecondary, marginTop: 4 }}>
                                     Refresh sync is still loading. The rest of Home stays available while your latest dashboard data resolves.
                                 </div>
                             </div>
@@ -302,7 +386,7 @@ export default function HomeScreen() {
                                     borderRadius: 14,
                                     padding: '14px 16px',
                                     fontSize: 12,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     outline: 'none',
                                 }}
                             />
@@ -316,6 +400,11 @@ export default function HomeScreen() {
                                     <div>
                                         <div className="section-label">Attention</div>
                                         <h3 className="section-title">Due soon</h3>
+                                        <div style={{ fontSize: 12, color: T.fgSecondary, marginTop: 6 }}>
+                                            {dueSoonSubs.length > 0
+                                                ? `${dueSoonSubs.length} renewal${dueSoonSubs.length === 1 ? '' : 's'} need attention in the next 7 days totaling ${formatCurrency(dueSoonTotal, currency).replace('.00', '')}.`
+                                                : 'Nothing due in the next 7 days.'}
+                                        </div>
                                     </div>
                                     <button
                                         onClick={() => navigate('/calendar')}
@@ -326,7 +415,7 @@ export default function HomeScreen() {
                                     </button>
                                 </div>
                                 {dueSoonSubs.length === 0 ? (
-                                    <div className="surface-card-muted" style={{ padding: '14px 16px', fontSize: 13, color: T.fgMedium }}>
+                                    <div className="surface-card-muted" style={{ padding: '14px 16px', fontSize: 13, color: T.fgSecondary }}>
                                         Nothing due in the next 7 days.
                                     </div>
                                 ) : (
@@ -357,15 +446,100 @@ export default function HomeScreen() {
                                                         padding: '0 18px 14px',
                                                         marginTop: -6,
                                                         fontSize: 12,
-                                                        color: T.fgMedium,
+                                                        color: T.fgSecondary,
                                                     }}
                                                 >
-                                                    Due on <span style={{ color: T.fgHigh }}>{formatDueDate(sub.renewalDate)}</span>
+                                                    Due on <span style={{ color: T.fgPrimary }}>{formatDueDate(sub.renewalDate)}</span>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                        </section>
+                    )}
+
+                    {quickWin && (
+                        <section
+                            className="surface-card"
+                            style={{
+                                padding: 18,
+                                border: `1px solid ${quickWin.tone}33`,
+                                background: `linear-gradient(180deg, ${quickWin.tone}10, ${T.bgSurface})`,
+                            }}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles size={15} color={quickWin.tone} />
+                                        <span className="section-label" style={{ color: quickWin.tone }}>
+                                            Quick wins
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 18, color: T.fgPrimary, fontWeight: 700, marginTop: 8 }}>
+                                        {quickWin.title}
+                                    </div>
+                                    <div style={{ fontSize: 13, color: T.fgSecondary, lineHeight: 1.6, marginTop: 6 }}>
+                                        {quickWin.description}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={quickWin.action}
+                                    className="interactive-btn cursor-pointer"
+                                    style={{
+                                        borderRadius: 12,
+                                        border: `1px solid ${quickWin.tone}44`,
+                                        background: `${quickWin.tone}18`,
+                                        color: quickWin.tone,
+                                        padding: '10px 12px',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    {quickWin.cta}
+                                </button>
+                            </div>
+                        </section>
+                    )}
+
+                    {showBudgetPrompt && (
+                        <section
+                            className="surface-card"
+                            style={{
+                                padding: 18,
+                                border: `1px solid ${T.accentPrimary}33`,
+                                background: `linear-gradient(180deg, ${T.accentPrimary}10, ${T.bgSurface})`,
+                            }}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="section-label" style={{ color: T.accentPrimary }}>
+                                        Budget prompt
+                                    </div>
+                                    <div style={{ fontSize: 18, color: T.fgPrimary, fontWeight: 700, marginTop: 8 }}>
+                                        Set your monthly subscription goal next
+                                    </div>
+                                    <div style={{ fontSize: 13, color: T.fgSecondary, lineHeight: 1.6, marginTop: 6 }}>
+                                        You are at {formatCurrency(monthlyTotal, currency).replace('.00', '')}/month right now. Add a goal on Budget to see how much room you actually want for recurring spend.
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/budget')}
+                                    className="interactive-btn cursor-pointer"
+                                    style={{
+                                        borderRadius: 12,
+                                        border: `1px solid ${T.accentPrimary}44`,
+                                        background: `${T.accentPrimary}18`,
+                                        color: T.accentPrimary,
+                                        padding: '10px 12px',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    Open budget
+                                </button>
                             </div>
                         </section>
                     )}
@@ -377,106 +551,51 @@ export default function HomeScreen() {
                                 <h3 className="section-title">All subscriptions</h3>
                             </div>
                             <div className="surface-card-muted" style={{ padding: 4, display: 'flex', gap: 4 }}>
-                                {['type', 'category'].map(opt => (
+                                {[
+                                    { key: 'dueDate', label: 'Due date' },
+                                    { key: 'amount', label: 'Amount' },
+                                    { key: 'category', label: 'Category' },
+                                ].map(opt => (
                                     <button
-                                        key={opt}
-                                        onClick={() => setGroupBy(opt)}
+                                        key={opt.key}
+                                        onClick={() => setSortBy(opt.key)}
                                         className="interactive-btn cursor-pointer font-semibold"
                                         style={{
                                             padding: '10px 12px',
                                             borderRadius: 12,
                                             border: 'none',
-                                            background: groupBy === opt ? T.accentSoft : 'transparent',
-                                            color: groupBy === opt ? T.accentPrimary : T.fgMedium,
+                                            background: sortBy === opt.key ? T.accentSoft : 'transparent',
+                                            color: sortBy === opt.key ? T.accentPrimary : T.fgSecondary,
                                             fontSize: 12,
                                         }}
                                     >
-                                        {opt === 'type' ? 'Bill type' : 'Category'}
+                                        {opt.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         <div className="dashboard-stack" style={{ gap: 10 }}>
-                            {Object.entries(groupData).map(([groupKey, items]) => {
-                                const meta = getGroupMeta(groupKey)
-                                const isExpanded = expandedGroups[groupKey] !== false // Default true
-                                const groupTotal = items.reduce((sum, s) => sum + normalizeToMonthly(s.amount, s.cycle), 0)
-                                const IconComp = getIconComp(meta.icon)
-
-                                return (
-                                    <div key={groupKey}>
-                                        <div
-                                            onClick={() => toggleGroup(groupKey)}
-                                            className="surface-card-muted flex items-center gap-3 cursor-pointer transition-colors"
-                                            style={{
-                                                padding: '14px 16px',
-                                                background: `linear-gradient(180deg, ${meta.color}12, ${T.bgElevated})`,
-                                                borderColor: `${meta.color}2a`,
-                                                borderBottomLeftRadius: isExpanded ? 0 : 18,
-                                                borderBottomRightRadius: isExpanded ? 0 : 18,
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: 28, height: 28,
-                                                borderRadius: groupKey === 'utility' ? 3 : groupKey === 'loan' ? 2 : '50%',
-                                                background: meta.color,
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                flexShrink: 0
-                                            }}>
-                                                <IconComp size={12} color="#fff" />
-                                            </div>
-                                            <span
-                                                className="flex-1 font-bold tracking-wide uppercase truncate min-w-0"
-                                                style={{ fontSize: 12, color: meta.color }}
-                                            >
-                                                {meta.label}
-                                            </span>
-                                            <span className="font-mono font-bold shrink-0" style={{ fontSize: 11, color: meta.color }}>
-                                                {formatCurrency(groupTotal, currency)}/mo
-                                            </span>
-                                            {isExpanded ? (
-                                                <ChevronDown size={18} color={T.fgSubtle} />
-                                            ) : (
-                                                <ChevronRight size={18} color={T.fgSubtle} />
-                                            )}
-                                        </div>
-
-                                        {isExpanded && (
-                                            <div
-                                                className="surface-card-muted"
-                                                style={{
-                                                    background: T.bgSurface,
-                                                    borderTop: 'none',
-                                                    borderTopLeftRadius: 0,
-                                                    borderTopRightRadius: 0,
-                                                    overflow: 'hidden',
-                                                }}
-                                            >
-                                                {items.map((item, index) => (
-                                                    <div
-                                                        key={item.id}
-                                                        style={{
-                                                            background: index % 2 === 0 ? T.bgSurface : T.bgSubtle,
-                                                        }}
-                                                    >
-                                                        {renderGroupItem(item)}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            })}
+                            {sortedSubscriptions.map((item, index) => (
+                                <div
+                                    key={item.id}
+                                    style={{
+                                        background: index % 2 === 0 ? T.bgSurface : T.bgSubtle,
+                                        position: 'relative',
+                                    }}
+                                >
+                                    {renderGroupItem(item)}
+                                </div>
+                            ))}
                         </div>
 
                         {hasSearchNoResults && (
                             <div className="flex flex-col items-center gap-3 mt-8 px-8">
                                 <div className="text-center">
-                                    <div style={{ fontSize: 16, fontWeight: 600, color: T.fgHigh, marginBottom: 4 }}>
+                                    <div style={{ fontSize: 16, fontWeight: 600, color: T.fgPrimary, marginBottom: 4 }}>
                                         No matches found
                                     </div>
-                                    <div style={{ fontSize: 13, color: T.fgMedium, lineHeight: 1.6 }}>
+                                    <div style={{ fontSize: 13, color: T.fgSecondary, lineHeight: 1.6 }}>
                                         No subscriptions match <strong>{searchTerm}</strong>. Try another keyword.
                                     </div>
                                 </div>
@@ -489,7 +608,7 @@ export default function HomeScreen() {
                                         borderRadius: 14,
                                         padding: '8px 14px',
                                         fontSize: 12,
-                                        color: T.fgHigh,
+                                        color: T.fgPrimary,
                                         fontWeight: 600,
                                     }}
                                 >
@@ -507,10 +626,10 @@ export default function HomeScreen() {
                                     <Plus size={28} color={T.accentPrimary} />
                                 </div>
                                 <div className="text-center">
-                                    <div style={{ fontSize: 16, fontWeight: 600, color: T.fgHigh, marginBottom: 4 }}>
+                                    <div style={{ fontSize: 16, fontWeight: 600, color: T.fgPrimary, marginBottom: 4 }}>
                                         No subscriptions yet
                                     </div>
-                                    <div style={{ fontSize: 13, color: T.fgMedium, lineHeight: 1.6 }}>
+                                    <div style={{ fontSize: 13, color: T.fgSecondary, lineHeight: 1.6 }}>
                                         Tap the <strong>Add</strong> tab to add your first subscription using AI or manually.
                                     </div>
                                 </div>

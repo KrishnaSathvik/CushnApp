@@ -15,13 +15,15 @@ import {
 
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import useSubscriptions from "../hooks/useSubscriptions";
+import { useSettings } from "../context/SettingsContext";
 import { evaluatePassword } from "../lib/passwordPolicy";
+import { formatCurrency } from "../lib/formatCurrency";
 import { PUBLIC_TYPE } from "../lib/publicLayout";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import PageShell from "../components/layout/PageShell";
 import PageIntro from "../components/layout/PageIntro";
 import AppHeroCard from "../components/ui/AppHeroCard";
-import DashboardPreviewMock from "../components/ui/DashboardPreviewMock";
 
 // ─── Component: Field ────────────────────────────────────────────────────────
 export function Field({
@@ -44,7 +46,7 @@ export function Field({
   return (
     <div className="mb-4">
       <div className="flex justify-between items-center mb-1.5">
-        <label style={{ fontSize: 12, color: T.fgMedium, fontWeight: 500 }}>
+        <label style={{ fontSize: 12, color: T.fgSecondary, fontWeight: 500 }}>
           {label}
           {required && (
             <span style={{ color: T.accentPrimary, marginLeft: 2 }}>*</span>
@@ -68,7 +70,7 @@ export function Field({
       <div className="relative flex items-center">
         {Icon && (
           <div className="absolute left-3.5 pointer-events-none">
-            <Icon size={15} color={focused ? T.accentPrimary : T.fgSubtle} />
+            <Icon size={15} color={focused ? T.accentPrimary : T.fgTertiary} />
           </div>
         )}
         <input
@@ -84,7 +86,7 @@ export function Field({
             background: T.bgElevated,
             border: `1px solid ${error ? T.semDanger : focused ? T.accentPrimary : T.border}`,
             borderRadius: 10,
-            color: T.fgHigh,
+            color: T.fgPrimary,
             paddingLeft: Icon ? 38 : 14,
             paddingRight: isPassword ? 40 : 14,
             boxShadow: focused ? `0 0 0 3px ${T.accentPrimary}22` : "none",
@@ -96,9 +98,9 @@ export function Field({
             className="absolute right-3.5 cursor-pointer"
           >
             {showPw ? (
-              <EyeOff size={16} color={T.fgSubtle} />
+              <EyeOff size={16} color={T.fgTertiary} />
             ) : (
-              <Eye size={16} color={T.fgSubtle} />
+              <Eye size={16} color={T.fgTertiary} />
             )}
           </div>
         )}
@@ -167,7 +169,7 @@ function PasswordTipsPanel({ open, analysis }) {
     >
       <div
         className="font-mono"
-        style={{ fontSize: 10, color: T.fgMedium, marginBottom: 8, fontWeight: 700 }}
+        style={{ fontSize: 10, color: T.fgSecondary, marginBottom: 8, fontWeight: 700 }}
       >
         PASSWORD TIPS
       </div>
@@ -188,7 +190,7 @@ function PasswordTipsPanel({ open, analysis }) {
           <span
             style={{
               fontSize: 11,
-              color: check.passed ? T.fgMedium : T.fgMedium,
+              color: check.passed ? T.fgSecondary : T.fgSecondary,
             }}
           >
             {check.label}
@@ -238,7 +240,7 @@ function SuccessBanner({ message }) {
   );
 }
 
-function AuthFeaturePills({ compact = false }) {
+function AuthFeaturePills() {
   const { T } = useTheme();
   const items = [
     "AI text parsing",
@@ -248,11 +250,10 @@ function AuthFeaturePills({ compact = false }) {
     "CSV export",
     "Guest + Sync",
   ];
-  const list = compact ? items.slice(0, 3) : items;
 
   return (
     <div className="flex flex-wrap gap-2 mt-5 relative z-10">
-      {list.map((f) => (
+      {items.map((f) => (
         <div
           key={f}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
@@ -262,7 +263,7 @@ function AuthFeaturePills({ compact = false }) {
           }}
         >
           <Check size={11} color={T.semSuccess} />
-          <span className="text-[10px]" style={{ color: T.fgMedium }}>
+          <span className="text-[10px]" style={{ color: T.fgSecondary }}>
             {f}
           </span>
         </div>
@@ -272,15 +273,15 @@ function AuthFeaturePills({ compact = false }) {
 }
 
 // ─── Component: PreviewPanel ─────────────────────────────────────────────────
-const PreviewPanel = ({ mode }) => {
+const PreviewPanel = ({ mode, blurb, valuePoints = [] }) => {
   const { T } = useTheme();
 
   return (
     <div
-      className="hidden xl:flex flex-1 flex-col justify-center px-8 2xl:px-10 pt-10 pb-8 2xl:pt-12 relative overflow-hidden"
+      className="w-full flex flex-col justify-center px-4 sm:px-6 md:px-8 xl:px-8 2xl:px-10 pt-0 pb-8 xl:pt-10 xl:pb-8 relative overflow-hidden border-t xl:border-t-0 xl:border-l"
       style={{
         background: `linear-gradient(135deg, ${T.bgSurface} 0%, ${T.bgBase} 100%)`,
-        borderLeft: `1px solid ${T.border}`,
+        borderColor: T.border,
       }}
     >
       <div
@@ -308,22 +309,42 @@ const PreviewPanel = ({ mode }) => {
         </div>
         <div
           className="text-[22px] font-bold leading-tight"
-          style={{ color: T.fgHigh }}
+          style={{ color: T.fgPrimary }}
         >
           {mode === "signup"
-            ? "A cleaner command center for every subscription."
-            : "Your dashboard is ready to continue."}
+            ? "Keep the insights. Add sync and reminders."
+            : "Continue where your subscription audit left off."}
+        </div>
+        <div style={{ color: T.fgSecondary, fontSize: 13, lineHeight: 1.7, marginTop: 10, maxWidth: 420 }}>
+          {blurb}
         </div>
       </div>
-
-      <DashboardPreviewMock variant="auth" />
+      <AppHeroCard
+        style={{
+          background: T.bgSurface,
+          border: `1px solid ${T.border}`,
+          padding: "18px 16px",
+        }}
+      >
+        <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, letterSpacing: 1, fontWeight: 700 }}>
+          WHY CREATE AN ACCOUNT
+        </div>
+        <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+          {valuePoints.map((item) => (
+            <div key={item} className="flex items-start gap-2">
+              <Check size={13} color={T.semSuccess} style={{ marginTop: 2 }} />
+              <div style={{ fontSize: 13, color: T.fgSecondary, lineHeight: 1.6 }}>{item}</div>
+            </div>
+          ))}
+        </div>
+      </AppHeroCard>
       <AuthFeaturePills />
     </div>
   );
 };
 
 // ─── Auth Split Layout ───────────────────────────────────────────────────────
-export function AuthSplitLayout({ children, mode }) {
+export function AuthSplitLayout({ children, mode, blurb = "Your subscriptions sync across devices, and reminders arrive before renewals hit.", valuePoints = [] }) {
   const { T } = useTheme()
   return (
     <div style={{ minHeight: "100vh", background: T.bgBase, display: "flex", flexDirection: "column" }}>
@@ -339,9 +360,9 @@ export function AuthSplitLayout({ children, mode }) {
           }}
         />
 
-        <PageShell width="default" className="relative z-10 flex h-full xl:items-stretch" style={{ minHeight: "100vh" }}>
+        <PageShell width="default" className="relative z-10 grid h-full grid-cols-1 xl:grid-cols-[560px_minmax(0,1fr)] xl:items-stretch" style={{ minHeight: "100vh" }}>
           <div
-            className="w-full xl:w-[560px] 2xl:w-[600px] shrink-0 flex flex-col justify-center xl:justify-start px-4 sm:px-6 md:px-8 py-8 xl:pt-10 xl:pb-8 overflow-y-auto lg:border-r"
+            className="w-full flex flex-col justify-center xl:justify-start px-4 sm:px-6 md:px-8 py-8 xl:pt-10 xl:pb-8 overflow-y-auto xl:border-r"
             style={{
               borderColor: T.border,
               background: `${T.bgBase}e6`,
@@ -357,14 +378,10 @@ export function AuthSplitLayout({ children, mode }) {
               }}
             >
               {children}
-              <div className="xl:hidden mt-6">
-                <DashboardPreviewMock compact variant="auth" />
-                <AuthFeaturePills compact />
-              </div>
             </AppHeroCard>
           </div>
 
-          <PreviewPanel mode={mode} />
+          <PreviewPanel mode={mode} blurb={blurb} valuePoints={valuePoints} />
         </PageShell>
       </div>
     </div>
@@ -384,7 +401,7 @@ export function AuthPageHeader({ title, subtitle }) {
         <img src="/logo.png" alt="Cushn" className="w-7 h-7 rounded-lg" />
         <span
           className="text-[16px] font-bold tracking-tight"
-          style={{ color: T.fgHigh }}
+          style={{ color: T.fgPrimary }}
         >
           Cushn
         </span>
@@ -407,8 +424,11 @@ export function AuthPageHeader({ title, subtitle }) {
 // ═════════════════════════════════════════════════════════════════════════════════
 export function SignUpPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { T } = useTheme()
-  const { signUp } = useAuth();
+  const { signUp, loginAsGuest, isGuest } = useAuth();
+  const { subscriptions, monthlyTotal, annualTotal } = useSubscriptions();
+  const { currency } = useSettings();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -418,6 +438,14 @@ export function SignUpPage() {
   const [success, setSuccess] = useState("");
   const [showPasswordTips, setShowPasswordTips] = useState(false);
   const passwordAnalysis = evaluatePassword(password);
+  const guestSubCount = subscriptions.filter((item) => item.status === "active").length;
+  const isGuestConversion = guestSubCount > 0;
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") ? redirectParam : "/";
+  const signupSubtitle = isGuestConversion
+    ? `Sync your ${guestSubCount} subscription${guestSubCount === 1 ? "" : "s"} worth ${formatCurrency(monthlyTotal, currency).replace(".00", "")}/month across devices and get reminders before renewals hit.`
+    : "Most users discover they are wasting real money on subscriptions they forgot about. Create an account to keep the insights and stay ahead of renewals.";
 
   const handleSubmit = async () => {
     if (!fullName.trim() || !email.trim() || !password) {
@@ -446,11 +474,42 @@ export function SignUpPage() {
   };
 
   return (
-    <AuthSplitLayout mode="signup">
+    <AuthSplitLayout
+      mode="signup"
+      blurb={isGuestConversion ? signupSubtitle : "Your subscriptions sync across devices, and reminder emails land before charges hit."}
+      valuePoints={[
+        "Sync guest-mode subscriptions across all devices",
+        "Get email reminders before renewals hit",
+        "Keep your duplicate and trim-candidate insights",
+      ]}
+    >
       <AuthPageHeader
         title="Create your account"
-        subtitle="Build a spending cushion with AI-powered subscription tracking, reminders, and budget visibility."
+        subtitle={signupSubtitle}
       />
+
+      {isGuestConversion && (
+        <div
+          className="motion-rise-in"
+          style={{
+            marginBottom: 16,
+            background: `${T.accentPrimary}10`,
+            border: `1px solid ${T.accentPrimary}33`,
+            borderRadius: 12,
+            padding: 12,
+          }}
+        >
+          <div className="font-mono" style={{ fontSize: 10, color: T.accentPrimary, fontWeight: 700, letterSpacing: 1 }}>
+            GUEST SNAPSHOT
+          </div>
+          <div style={{ fontSize: 13, color: T.fgPrimary, fontWeight: 700, marginTop: 6 }}>
+            You already found {formatCurrency(monthlyTotal, currency).replace(".00", "")}/month in recurring spend.
+          </div>
+          <div style={{ fontSize: 12, color: T.fgSecondary, lineHeight: 1.6, marginTop: 6 }}>
+            That is {formatCurrency(annualTotal, currency).replace(".00", "")}/year of renewals ready to sync across devices.
+          </div>
+        </div>
+      )}
 
       <ErrorBanner message={error} />
       <SuccessBanner message={success} />
@@ -501,7 +560,7 @@ export function SignUpPage() {
         >
           {agreed && <Check size={10} color="#fff" />}
         </div>
-        <span className="text-[12px] leading-[1.6]" style={{ color: T.fgMedium }}>
+        <span className="text-[12px] leading-[1.6]" style={{ color: T.fgSecondary }}>
           I agree to the{" "}
           <Link to="/terms" className="cursor-pointer" style={{ color: T.accentPrimary }}>
             Terms of Service
@@ -535,9 +594,26 @@ export function SignUpPage() {
         )}
       </button>
 
+      <button
+        onClick={async () => {
+          if (!isGuest) {
+            await loginAsGuest("Guest");
+          }
+          navigate(redirectTo);
+        }}
+        className="interactive-btn w-full h-11 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] cursor-pointer mt-3"
+        style={{
+          background: T.bgElevated,
+          border: `1px solid ${T.border}`,
+          color: T.fgPrimary,
+        }}
+      >
+        {isGuest ? "Keep going in guest mode" : "Continue as guest"}
+      </button>
+
       {/* Sign in link */}
       <div className="mt-6 text-center">
-        <span className="text-[13px]" style={{ color: T.fgSubtle }}>
+        <span className="text-[13px]" style={{ color: T.fgTertiary }}>
           Already have an account?{" "}
         </span>
         <Link
@@ -559,7 +635,9 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { T } = useTheme()
-  const { login } = useAuth();
+  const { login, loginAsGuest, isGuest } = useAuth();
+  const { subscriptions, monthlyTotal } = useSubscriptions();
+  const { currency } = useSettings();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -568,6 +646,10 @@ export function LoginPage() {
   const redirectParam = new URLSearchParams(location.search).get("redirect");
   const redirectTo =
     redirectParam && redirectParam.startsWith("/") ? redirectParam : "/";
+  const guestSubCount = subscriptions.filter((item) => item.status === "active").length;
+  const loginSubtitle = guestSubCount > 0
+    ? `You already have ${guestSubCount} active subscription${guestSubCount === 1 ? "" : "s"} totaling ${formatCurrency(monthlyTotal, currency).replace(".00", "")}/month in guest mode. Sign in to keep them synced.`
+    : "Sign in to continue with your subscription insights and upcoming renewals.";
 
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
@@ -587,11 +669,42 @@ export function LoginPage() {
   };
 
   return (
-    <AuthSplitLayout mode="login">
+    <AuthSplitLayout
+      mode="login"
+      blurb="Your subscriptions sync across devices, and reminder emails arrive before charges hit."
+      valuePoints={[
+        "Pick up your dashboard on any device",
+        "Get renewal reminders without re-entering data",
+        "Continue as guest if you just want to try the product first",
+      ]}
+    >
       <AuthPageHeader
         title="Welcome back"
-        subtitle="Sign in to continue managing subscriptions and renewals."
+        subtitle={loginSubtitle}
       />
+
+      {guestSubCount > 0 && (
+        <div
+          className="motion-rise-in"
+          style={{
+            marginBottom: 16,
+            background: `${T.semSuccess}10`,
+            border: `1px solid ${T.semSuccess}33`,
+            borderRadius: 12,
+            padding: 12,
+          }}
+        >
+          <div className="font-mono" style={{ fontSize: 10, color: T.semSuccess, fontWeight: 700, letterSpacing: 1 }}>
+            READY TO SYNC
+          </div>
+          <div style={{ fontSize: 13, color: T.fgPrimary, fontWeight: 700, marginTop: 6 }}>
+            Guest mode already has your current dashboard context.
+          </div>
+          <div style={{ fontSize: 12, color: T.fgSecondary, lineHeight: 1.6, marginTop: 6 }}>
+            Sign in to keep those subscriptions across devices and turn reminders on without re-entering them.
+          </div>
+        </div>
+      )}
 
       <ErrorBanner message={error} />
 
@@ -640,9 +753,26 @@ export function LoginPage() {
         )}
       </button>
 
+      <button
+        onClick={async () => {
+          if (!isGuest) {
+            await loginAsGuest("Guest");
+          }
+          navigate(redirectTo);
+        }}
+        className="interactive-btn w-full h-11 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] cursor-pointer mt-3"
+        style={{
+          background: T.bgElevated,
+          border: `1px solid ${T.border}`,
+          color: T.fgPrimary,
+        }}
+      >
+        {isGuest ? "Keep going in guest mode" : "Continue as guest"}
+      </button>
+
       {/* Sign up link */}
       <div className="mt-6 text-center">
-        <span className="text-[13px]" style={{ color: T.fgSubtle }}>
+        <span className="text-[13px]" style={{ color: T.fgTertiary }}>
           Don't have an account?{" "}
         </span>
         <Link
@@ -716,7 +846,7 @@ export function ForgotPasswordPage() {
             style={{
               background: T.bgElevated,
               border: `1px solid ${T.border}`,
-              color: T.fgHigh,
+              color: T.fgPrimary,
             }}
           >
             Back to Login
@@ -757,7 +887,7 @@ export function ForgotPasswordPage() {
             <Link
               to="/login"
               className="text-[13px] font-semibold no-underline"
-              style={{ color: T.fgSubtle }}
+              style={{ color: T.fgTertiary }}
             >
               ← Back to sign in
             </Link>
@@ -853,10 +983,10 @@ export function ResetPasswordPage() {
             marginBottom: 18,
           }}
         >
-          <div style={{ color: T.fgHigh, fontSize: 13, fontWeight: 700 }}>
+          <div style={{ color: T.fgPrimary, fontSize: 13, fontWeight: 700 }}>
             Recovery link required
           </div>
-          <div style={{ color: T.fgMedium, fontSize: 12, lineHeight: 1.7, marginTop: 6 }}>
+          <div style={{ color: T.fgSecondary, fontSize: 12, lineHeight: 1.7, marginTop: 6 }}>
             Request a password reset email first, then open the link from your inbox to finish changing your password.
           </div>
           <button
@@ -865,7 +995,7 @@ export function ResetPasswordPage() {
             style={{
               background: T.bgBase,
               border: `1px solid ${T.border}`,
-              color: T.fgHigh,
+              color: T.fgPrimary,
             }}
           >
             Request reset email
@@ -917,7 +1047,7 @@ export function ResetPasswordPage() {
         <Link
           to="/login"
           className="text-[13px] font-semibold no-underline"
-          style={{ color: T.fgSubtle }}
+          style={{ color: T.fgTertiary }}
         >
           ← Back to sign in
         </Link>
@@ -1009,7 +1139,7 @@ export function AuthCallbackPage() {
           style={{
             background: T.bgElevated,
             border: `1px solid ${T.border}`,
-            color: T.fgHigh,
+            color: T.fgPrimary,
           }}
         >
           <Loader2 size={16} className="animate-spin shrink-0" />

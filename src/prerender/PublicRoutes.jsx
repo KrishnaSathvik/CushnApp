@@ -1,6 +1,7 @@
 import React from 'react'
 import { StaticRouter } from 'react-router'
 import LandingPage from '../screens/LandingPage'
+import AuditPage from '../screens/AuditPage'
 import LegalPage from '../screens/LegalPage'
 import { ThemeProvider } from '../context/ThemeContext'
 
@@ -9,6 +10,8 @@ function PublicRouteContent({ pathname }) {
     case '/':
     case '/landing':
       return <LandingPage />
+    case '/audit':
+      return <AuditPage />
     case '/privacy':
     case '/terms':
     case '/contact':

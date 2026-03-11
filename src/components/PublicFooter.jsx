@@ -2,7 +2,6 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import PageShell from './layout/PageShell'
-import AppSurfaceCard from './ui/AppSurfaceCard'
 
 export default function PublicFooter() {
   const { T } = useTheme()
@@ -32,7 +31,7 @@ export default function PublicFooter() {
   const renderLink = (link, compact = false) => {
     const sharedStyle = compact
       ? {
-          color: T.fgMedium,
+          color: T.fgSecondary,
           textDecoration: 'none',
           fontSize: 13,
           lineHeight: 1.6,
@@ -42,7 +41,7 @@ export default function PublicFooter() {
           padding: '0 12px',
           borderRadius: 999,
           fontSize: 11,
-          color: T.fgMedium,
+          color: T.fgSecondary,
           textDecoration: 'none',
           border: `1px solid ${T.border}`,
           display: 'inline-flex',
@@ -84,7 +83,7 @@ export default function PublicFooter() {
       }}
     >
       <PageShell width="default">
-        <AppSurfaceCard className="public-footer-card" style={{ background: T.bgSurface }}>
+        <div className="public-footer-card">
           <div className="public-footer-top">
             <div>
               <div
@@ -100,7 +99,7 @@ export default function PublicFooter() {
                   alt="Cushn Logo"
                   style={{ width: 18, height: 18, borderRadius: 5 }}
                 />
-                <span style={{ fontSize: 16, fontWeight: 700, color: T.fgHigh }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: T.fgPrimary }}>
                   Cushn
                 </span>
               </div>
@@ -108,12 +107,12 @@ export default function PublicFooter() {
               <div
                 style={{
                   maxWidth: 340,
-                  color: T.fgMedium,
+                  color: T.fgSecondary,
                   fontSize: 13,
                   lineHeight: 1.7,
                 }}
               >
-                Track subscriptions, review imports, and stay ahead of renewals from one cleaner dashboard.
+                Find out what your subscriptions really cost. Surface hidden spend, flag waste, and get reminded before renewals hit.
               </div>
 
               <div
@@ -134,7 +133,7 @@ export default function PublicFooter() {
                       borderRadius: 999,
                       border: `1px solid ${T.border}`,
                       background: T.bgElevated,
-                      color: T.fgMedium,
+                      color: T.fgSecondary,
                       display: 'inline-flex',
                       alignItems: 'center',
                       fontSize: 10,
@@ -179,11 +178,11 @@ export default function PublicFooter() {
               borderTop: `1px solid ${T.border}`,
             }}
           >
-            <div style={{ fontSize: 11, color: T.fgSubtle }}>
-              © {new Date().getFullYear()} Cushn. Subscription tracking without the spreadsheet drift.
+            <div style={{ fontSize: 11, color: T.fgTertiary }}>
+              © {new Date().getFullYear()} Cushn. Know exactly where your money goes every month.
             </div>
           </div>
-        </AppSurfaceCard>
+        </div>
       </PageShell>
     </footer>
   )

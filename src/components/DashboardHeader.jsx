@@ -64,10 +64,14 @@ export default function DashboardHeader() {
                 <button
                     onClick={() => navigate('/')}
                     className="interactive-btn flex items-center gap-2 cursor-pointer border-none"
-                    style={{ background: 'transparent', padding: 0 }}
+                    style={{
+                        background: 'transparent',
+                        padding: '9px 0',
+                        minHeight: 44,
+                    }}
                 >
                     <img src="/logo.png" alt="Cushn Logo" style={{ width: 24, height: 24, borderRadius: 6 }} />
-                    <span style={{ fontSize: 17, fontWeight: 700, color: T.fgHigh, letterSpacing: '-0.5px' }}>Cushn</span>
+                    <span style={{ fontSize: 17, fontWeight: 700, color: T.fgPrimary, letterSpacing: '-0.5px' }}>Cushn</span>
                 </button>
 
                 <nav className="hidden md:flex items-center gap-2">
@@ -83,7 +87,7 @@ export default function DashboardHeader() {
                                     padding: '0 12px',
                                     borderRadius: 999,
                                     background: isActive ? T.accentSoft : 'transparent',
-                                    color: isActive ? T.accentPrimary : T.fgMedium,
+                                    color: isActive ? T.accentPrimary : T.fgSecondary,
                                     border: `1px solid ${isActive ? T.accentPrimary : T.border}`,
                                     fontSize: 11,
                                 }}
@@ -100,9 +104,9 @@ export default function DashboardHeader() {
                         aria-label={visibleReminders.length > 0 ? `${visibleReminders.length} notifications` : 'No notifications'}
                         aria-expanded={showNotifications}
                         className="interactive-btn relative flex items-center justify-center rounded-full border-none cursor-pointer"
-                        style={{ width: 36, height: 36, background: T.bgGlass, border: `1px solid ${T.border}` }}
+                        style={{ width: 44, height: 44, background: T.bgGlass, border: `1px solid ${T.border}` }}
                     >
-                        <BellRing size={17} color={T.fgHigh} />
+                        <BellRing size={17} color={T.fgPrimary} />
                         {visibleReminders.length > 0 && (
                             <span
                                 className="font-mono"
@@ -141,7 +145,7 @@ export default function DashboardHeader() {
                                 zIndex: 60,
                             }}
                         >
-                            <div className="flex items-center gap-2" style={{ color: T.fgHigh }}>
+                            <div className="flex items-center gap-2" style={{ color: T.fgPrimary }}>
                                 <BellRing size={16} color={T.accentPrimary} />
                                 <div className="section-label" style={{ margin: 0 }}>
                                     In-app notifications
@@ -171,13 +175,13 @@ export default function DashboardHeader() {
                                                 }}
                                             >
                                                 <div className="min-w-0">
-                                                    <div style={{ fontSize: 14, fontWeight: 700, color: T.fgHigh }}>
+                                                    <div style={{ fontSize: 14, fontWeight: 700, color: T.fgPrimary }}>
                                                         {name}
                                                     </div>
                                                     <div className="font-mono" style={{ fontSize: 11, color: T.accentPrimary, marginTop: 4 }}>
                                                         {daysLabel}
                                                     </div>
-                                                    <div style={{ fontSize: 12, color: T.fgMedium, marginTop: 6 }}>
+                                                    <div style={{ fontSize: 12, color: T.fgSecondary, marginTop: 6 }}>
                                                         Renews on {reminder.renewalDate}{amount ? ` • ${amount}` : ''}
                                                     </div>
                                                 </div>
@@ -190,9 +194,10 @@ export default function DashboardHeader() {
                                                             }}
                                                             className="interactive-btn cursor-pointer"
                                                             style={{
+                                                                minHeight: 36,
                                                                 border: `1px solid ${T.border}`,
                                                                 background: T.bgSurface,
-                                                                color: T.fgHigh,
+                                                                color: T.fgPrimary,
                                                                 borderRadius: 999,
                                                                 fontSize: 11,
                                                                 padding: '7px 10px',
@@ -207,12 +212,12 @@ export default function DashboardHeader() {
                                                         className="interactive-btn flex items-center justify-center cursor-pointer"
                                                         aria-label={`Dismiss reminder for ${name}`}
                                                         style={{
-                                                            width: 32,
-                                                            height: 32,
+                                                            width: 36,
+                                                            height: 36,
                                                             borderRadius: 999,
                                                             border: `1px solid ${T.border}`,
                                                             background: T.bgSurface,
-                                                            color: T.fgMedium,
+                                                            color: T.fgSecondary,
                                                             opacity: dismissingId === reminder.id ? 0.6 : 1,
                                                         }}
                                                     >
@@ -230,7 +235,7 @@ export default function DashboardHeader() {
                                         marginTop: 10,
                                         padding: '14px 16px',
                                         background: T.bgElevated,
-                                        color: T.fgMedium,
+                                        color: T.fgSecondary,
                                         fontSize: 13,
                                     }}
                                 >

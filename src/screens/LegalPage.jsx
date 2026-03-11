@@ -149,7 +149,7 @@ export default function LegalPage() {
       className="public-page"
       style={{
         background: T.bgBase,
-        color: T.fgHigh,
+        color: T.fgPrimary,
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
@@ -207,7 +207,7 @@ export default function LegalPage() {
                   letterSpacing: 1.1,
                   fontWeight: 700,
                   color: T.accentPrimary,
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-mono)",
                 }}
               >
                 {content.eyebrow.toUpperCase()}
@@ -222,7 +222,7 @@ export default function LegalPage() {
             />
             <p
               className="font-mono"
-              style={{ margin: '10px 0 0', fontSize: 10, color: T.fgSubtle }}
+              style={{ margin: '10px 0 0', fontSize: 10, color: T.fgTertiary }}
             >
               Last updated: March 5, 2026
             </p>
@@ -243,7 +243,7 @@ export default function LegalPage() {
                   style={{
                     margin: '0 0 8px',
                     fontSize: 16,
-                    color: T.fgHigh,
+                    color: T.fgPrimary,
                     letterSpacing: -0.2,
                   }}
                 >
@@ -254,7 +254,7 @@ export default function LegalPage() {
                     key={idx}
                     style={{
                       margin: '0 0 8px',
-                      color: T.fgMedium,
+                      color: T.fgSecondary,
                       fontSize: 14,
                       lineHeight: 1.7,
                     }}
@@ -280,7 +280,7 @@ export default function LegalPage() {
                 style={{
                   margin: '0 0 8px',
                   fontSize: 16,
-                  color: T.fgHigh,
+                  color: T.fgPrimary,
                   letterSpacing: -0.2,
                 }}
               >
@@ -299,7 +299,7 @@ export default function LegalPage() {
                       background: T.bgElevated,
                       border: `1px solid ${T.border}`,
                       borderRadius: 14,
-                      color: T.fgHigh,
+                      color: T.fgPrimary,
                       fontSize: 13,
                       padding: '12px 14px',
                     }}
@@ -316,7 +316,7 @@ export default function LegalPage() {
                       background: T.bgElevated,
                       border: `1px solid ${T.border}`,
                       borderRadius: 14,
-                      color: T.fgHigh,
+                      color: T.fgPrimary,
                       fontSize: 13,
                       padding: '12px 14px',
                     }}
@@ -333,7 +333,7 @@ export default function LegalPage() {
                     background: T.bgElevated,
                     border: `1px solid ${T.border}`,
                     borderRadius: 14,
-                    color: T.fgHigh,
+                    color: T.fgPrimary,
                     fontSize: 13,
                     padding: '12px 14px',
                   }}
@@ -350,7 +350,7 @@ export default function LegalPage() {
                     background: T.bgElevated,
                     border: `1px solid ${T.border}`,
                     borderRadius: 14,
-                    color: T.fgHigh,
+                    color: T.fgPrimary,
                     fontSize: 13,
                     padding: '12px 14px',
                     resize: 'vertical',

@@ -110,11 +110,11 @@ export default function VoiceInput({ onTranscript, onClose }) {
                 <span
                     onClick={onClose}
                     className="cursor-pointer"
-                    style={{ fontSize: 14, color: T.fgMedium }}
+                    style={{ fontSize: 14, color: T.fgSecondary }}
                 >
                     ‹ Cancel
                 </span>
-                <span style={{ fontSize: 14, color: T.fgHigh, fontWeight: 600 }}>Voice Input</span>
+                <span style={{ fontSize: 14, color: T.fgPrimary, fontWeight: 600 }}>Voice Input</span>
                 {isListening && <Chip color={T.semDanger}>● live</Chip>}
                 {!isListening && <div style={{ width: 40 }} />}
             </div>
@@ -139,16 +139,16 @@ export default function VoiceInput({ onTranscript, onClose }) {
             {/* Transcript */}
             <div className="flex-1" style={{ padding: '20px 16px 12px' }}>
                 {(transcript || interimText) ? (
-                    <div style={{ fontSize: 15, color: T.fgSubtle, lineHeight: 1.7 }}>
-                        <span style={{ color: T.fgHigh }}>{transcript}</span>
-                        <span style={{ color: T.fgSubtle }}>{interimText}</span>
+                    <div style={{ fontSize: 15, color: T.fgTertiary, lineHeight: 1.7 }}>
+                        <span style={{ color: T.fgPrimary }}>{transcript}</span>
+                        <span style={{ color: T.fgTertiary }}>{interimText}</span>
                         <span
                             className="animate-blink inline-block align-middle"
                             style={{ width: 2, height: 16, background: T.accentPrimary, marginLeft: 2 }}
                         />
                     </div>
                 ) : (
-                    <div style={{ fontSize: 15, color: T.fgSubtle, lineHeight: 1.7, textAlign: 'center', marginTop: 32 }}>
+                    <div style={{ fontSize: 15, color: T.fgTertiary, lineHeight: 1.7, textAlign: 'center', marginTop: 32 }}>
                         {isListening
                             ? 'Listening... Speak your subscriptions naturally.'
                             : 'Tap the microphone button to start speaking.'}
@@ -210,7 +210,7 @@ export default function VoiceInput({ onTranscript, onClose }) {
                         <Mic size={28} color={T.accentPrimary} />
                     )}
                 </button>
-                <span className="font-mono" style={{ fontSize: 11, color: T.fgSubtle }}>
+                <span className="font-mono" style={{ fontSize: 11, color: T.fgTertiary }}>
                     {isListening ? 'Tap to stop recording' : 'Tap to start speaking'}
                 </span>
             </div>

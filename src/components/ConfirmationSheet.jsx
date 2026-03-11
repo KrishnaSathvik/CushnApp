@@ -10,6 +10,7 @@ import { BILLING_CYCLES } from '../lib/constants'
 import { normalizeToMonthly } from '../lib/normalizeAmount'
 import { formatCurrency } from '../lib/formatCurrency'
 import { enrichSubscriptionCandidate, findPotentialDuplicate } from '../lib/vendorEnrichment'
+import { CATEGORY_NAMES } from '../../shared/categoryModel.ts'
 
 /**
  * Confirmation sheet that shows parsed subscriptions for review before saving.
@@ -34,7 +35,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
     // Derive category options from the categories prop (dynamic)
     const categoryOptions = categories.length > 0
         ? categories.map(c => c.name)
-        : ['Entertainment', 'Dev Tools', 'Health', 'Productivity', 'Cloud', 'News & Media', 'Other']
+        : CATEGORY_NAMES
 
     useEffect(() => {
         setSubs(items)
@@ -55,6 +56,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
     const totalMonthly = subs.reduce((sum, s) => {
         return sum + normalizeToMonthly(s.amount, s.cycle)
     }, 0)
+    const totalAnnual = totalMonthly * 12
     const hasInvalidDrafts = subs.some((sub) => !Number.isFinite(sub.amount) || sub.amount <= 0)
 
     const getCatColor = (cat) => {
@@ -104,11 +106,11 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                     style={{ padding: '10px 14px 8px', borderBottom: `1px solid ${T.border}` }}
                 >
                     <div>
-                        <div style={{ fontSize: 15, color: T.fgHigh, fontWeight: 700 }}>
-                            Review {subs.length} subscription{subs.length !== 1 ? 's' : ''}
+                        <div style={{ fontSize: 15, color: T.fgPrimary, fontWeight: 700 }}>
+                            Found {subs.length} subscription{subs.length !== 1 ? 's' : ''}
                         </div>
-                        <div className="font-mono mt-0.5" style={{ fontSize: 10, color: T.fgSubtle }}>
-                            AI detected from your input
+                        <div className="font-mono mt-0.5" style={{ fontSize: 10, color: T.fgTertiary }}>
+                            {formatCurrency(totalMonthly, currency)} / month • {formatCurrency(totalAnnual, currency)} / year
                         </div>
                         {hasInvalidDrafts && (
                             <div className="font-mono mt-1" style={{ fontSize: 10, color: T.semWarning }}>
@@ -159,7 +161,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                 opacity: subs.length > 0 && !hasInvalidDrafts ? 1 : 0.5,
                             }}
                         >
-                            {isConfirming ? 'Saving...' : 'Confirm All'}
+                            {isConfirming ? 'Saving...' : 'Save all'}
                         </button>
                     </div>
                 </div>
@@ -215,15 +217,15 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                                 onChange={(e) => handleEdit(i, 'name', e.target.value)}
                                                 className="outline-none w-full"
                                                 style={{
-                                                    fontSize: 13, color: T.fgHigh, fontWeight: 600,
+                                                    fontSize: 13, color: T.fgPrimary, fontWeight: 600,
                                                     background: T.bgElevated, border: `1px solid ${T.accentPrimary}`,
                                                     borderRadius: 10, padding: '6px 10px',
                                                 }}
                                             />
                                         ) : (
-                                            <div style={{ fontSize: 13, color: T.fgHigh, fontWeight: 600 }}>{sub.name}</div>
+                                            <div style={{ fontSize: 13, color: T.fgPrimary, fontWeight: 600 }}>{sub.name}</div>
                                         )}
-                                        <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle }}>
+                                        <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary }}>
                                             {sub.cycle}
                                         </div>
                                     </div>
@@ -234,7 +236,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                         {editingIdx === i ? (
                                             <Check size={14} color={T.accentPrimary} />
                                         ) : (
-                                            <Pencil size={14} color={T.fgSubtle} />
+                                            <Pencil size={14} color={T.fgTertiary} />
                                         )}
                                     </button>
                                     <button
@@ -255,7 +257,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                     >
                                         {/* Amount */}
                                         <div className="flex items-center gap-2 mb-2">
-                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, width: 60 }}>Amount</span>
+                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, width: 60 }}>Amount</span>
                                             <input
                                                 type="number"
                                                 step="0.01"
@@ -263,14 +265,14 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                                 onChange={(e) => handleEdit(i, 'amount', e.target.value)}
                                                 className="outline-none flex-1 font-mono"
                                                 style={{
-                                                    fontSize: 12, color: T.fgHigh, background: T.bgElevated,
+                                                    fontSize: 12, color: T.fgPrimary, background: T.bgElevated,
                                                     border: `1px solid ${T.border}`, borderRadius: 10, padding: '5px 10px',
                                                 }}
                                             />
                                         </div>
                                         {/* Cycle */}
                                         <div className="flex items-center gap-2 mb-2">
-                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, width: 60 }}>Cycle</span>
+                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, width: 60 }}>Cycle</span>
                                             <div className="flex gap-1 flex-1">
                                                 {BILLING_CYCLES.map((c) => (
                                                     <button
@@ -281,7 +283,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                                             flex: 1, padding: '5px 2px', borderRadius: 10, fontSize: 9,
                                                             background: sub.cycle === c ? T.accentSoft : T.bgElevated,
                                                             border: `1px solid ${sub.cycle === c ? T.accentPrimary : T.border}`,
-                                                            color: sub.cycle === c ? T.accentPrimary : T.fgSubtle,
+                                                            color: sub.cycle === c ? T.accentPrimary : T.fgTertiary,
                                                         }}
                                                     >
                                                         {c}
@@ -291,7 +293,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                         </div>
                                         {/* Category */}
                                         <div className="flex items-center gap-2">
-                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, width: 60 }}>Category</span>
+                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, width: 60 }}>Category</span>
                                             <div className="flex gap-1 flex-1 flex-wrap">
                                                 {categoryOptions.map((c) => (
                                                     <button
@@ -302,7 +304,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                                             padding: '4px 8px', borderRadius: 999, fontSize: 8,
                                                             background: sub.category === c ? getCatColor(c) + '33' : T.bgElevated,
                                                             border: `1px solid ${sub.category === c ? getCatColor(c) : T.border}`,
-                                                            color: sub.category === c ? getCatColor(c) : T.fgSubtle,
+                                                            color: sub.category === c ? getCatColor(c) : T.fgTertiary,
                                                         }}
                                                     >
                                                         {c}
@@ -312,14 +314,14 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                         </div>
                                         {/* Renewal Date */}
                                         <div className="flex items-center gap-2 mt-2">
-                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, width: 60 }}>Next Bill</span>
+                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, width: 60 }}>Next Bill</span>
                                             <input
                                                 type="date"
                                                 value={sub.renewalDate}
                                                 onChange={(e) => handleEdit(i, 'renewalDate', e.target.value)}
                                                 className="outline-none flex-1 font-mono"
                                                 style={{
-                                                    fontSize: 12, color: T.fgHigh, background: T.bgElevated,
+                                                    fontSize: 12, color: T.fgPrimary, background: T.bgElevated,
                                                     border: `1px solid ${T.border}`, borderRadius: 10, padding: '5px 10px',
                                                     colorScheme: isDark ? 'dark' : 'light'
                                                 }}
@@ -334,7 +336,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                         {sub.amount > 0 ? formatCurrency(sub.amount, currency) : 'Amount missing'}
                                     </Chip>
                                     <Chip color={getCatColor(sub.category)} size={9}>{sub.category}</Chip>
-                                    <Chip color={T.fgSubtle} size={9}>{sub.cycle}</Chip>
+                                    <Chip color={T.fgTertiary} size={9}>{sub.cycle}</Chip>
                                     {sub.vendorDomain && (
                                         <Chip color={T.semInfo} size={9}>{sub.vendorDomain}</Chip>
                                     )}
@@ -342,7 +344,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                                         {sub.vendorConfidence >= 0.9 ? 'High match' : 'Needs review'}
                                     </Chip>
                                     {sub.renewalDate && (
-                                        <Chip color={T.fgSubtle} size={9}>Next: {sub.renewalDate}</Chip>
+                                        <Chip color={T.fgTertiary} size={9}>Next: {sub.renewalDate}</Chip>
                                     )}
                                 </div>
                             </motion.div>
@@ -350,7 +352,7 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                     </AnimatePresence>
 
                     {subs.length === 0 && (
-                        <div className="text-center py-12" style={{ color: T.fgSubtle, fontSize: 13 }}>
+                        <div className="text-center py-12" style={{ color: T.fgTertiary, fontSize: 13 }}>
                             All items removed. Close this sheet to start over.
                         </div>
                     )}
@@ -361,10 +363,20 @@ export default function ConfirmationSheet({ items, categories = [], existingSubs
                             className="flex justify-between items-center"
                             style={{ padding: '10px 4px 0', borderTop: `1px solid ${T.border}` }}
                         >
-                            <span style={{ fontSize: 12, color: T.fgMedium }}>Monthly total added</span>
-                            <span className="font-mono font-bold" style={{ fontSize: 16, color: T.accentPrimary }}>
-                                +{formatCurrency(totalMonthly, currency)}
-                            </span>
+                            <div>
+                                <div style={{ fontSize: 12, color: T.fgSecondary }}>Ready to save</div>
+                                <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 2 }}>
+                                    Review items or save everything in one step.
+                                </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div className="font-mono font-bold" style={{ fontSize: 16, color: T.accentPrimary }}>
+                                    +{formatCurrency(totalMonthly, currency)}
+                                </div>
+                                <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 2 }}>
+                                    {formatCurrency(totalAnnual, currency)} / year
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

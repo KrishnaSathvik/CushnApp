@@ -29,10 +29,13 @@ import useBudget from '../hooks/useBudget'
 import { exportJSON } from '../lib/exportData'
 import { parseCSV } from '../lib/importData'
 import { DEFAULT_BUDGET } from '../lib/constants'
+import { formatCurrency } from '../lib/formatCurrency'
 import BottomSheet from '../components/BottomSheet'
 import ServiceLogo from '../components/ServiceLogo'
 import useNotificationPreferences from '../hooks/useNotificationPreferences'
 import { enrichSubscriptionCandidate, findPotentialDuplicate } from '../lib/vendorEnrichment'
+import { deriveSavingsHistory } from '../lib/subscriptionHistory'
+import { buildDuplicateVendorInsights } from '../lib/dashboardInsights'
 
 function SettingRow({ icon: Icon, label, value, onClick, danger, accent, disabled = false, last = false, hint = null }) {
     const { T } = useTheme()
@@ -60,24 +63,24 @@ function SettingRow({ icon: Icon, label, value, onClick, danger, accent, disable
                     border: `1px solid ${danger ? `${T.semDanger}33` : accent ? `${T.accentPrimary}33` : T.border}`,
                 }}
             >
-                <Icon size={15} color={danger ? T.semDanger : accent ? T.accentPrimary : T.fgMedium} />
+                <Icon size={15} color={danger ? T.semDanger : accent ? T.accentPrimary : T.fgSecondary} />
             </div>
             <div className="flex-1">
-                <div style={{ fontSize: 14, fontWeight: 600, color: danger ? T.semDanger : T.fgHigh }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: danger ? T.semDanger : T.fgPrimary }}>
                     {label}
                 </div>
                 {value && (
-                    <div className="font-mono" style={{ fontSize: 11, color: T.fgSubtle, marginTop: 3 }}>
+                    <div className="font-mono" style={{ fontSize: 11, color: T.fgTertiary, marginTop: 3 }}>
                         {value}
                     </div>
                 )}
                 {hint && (
-                    <div className="font-mono" style={{ fontSize: 9, color: T.fgSubtle, marginTop: 3 }}>
+                    <div className="font-mono" style={{ fontSize: 9, color: T.fgTertiary, marginTop: 3 }}>
                         {hint}
                     </div>
                 )}
             </div>
-            <ChevronRight size={14} color={T.fgSubtle} />
+            <ChevronRight size={14} color={T.fgTertiary} />
         </button>
     )
 }
@@ -155,6 +158,15 @@ export default function SettingsScreen() {
 
     const fileInputRef = useRef(null)
     const restoreInputRef = useRef(null)
+    const activeSubscriptions = subscriptions.filter((item) => item.status === 'active')
+    const duplicateOverlap = subscriptions.reduce((sum, item) => (
+        sum + (findPotentialDuplicate(item, subscriptions.filter((candidate) => candidate.id !== item.id)) ? Number(item.amount || 0) : 0)
+    ), 0)
+    const savingsHistory = deriveSavingsHistory(subscriptions)
+    const duplicateInsights = buildDuplicateVendorInsights(activeSubscriptions)
+    const duplicateCount = duplicateInsights.groups.reduce((sum, group) => sum + group.subscriptions.length, 0)
+    const identifiedSavings = savingsHistory.activeMonthlySavings + duplicateInsights.duplicateVendorSavingsMonthly
+    const shareText = `I use Cushn to track subscriptions and spot duplicate spend. Try it: ${window.location.origin}`
 
     const showToast = (type, message) => {
         setToast({ type, message })
@@ -500,7 +512,7 @@ export default function SettingsScreen() {
     }
 
     return (
-        <div className="dashboard-page" style={{ background: T.bgSubtle }}>
+        <div className="dashboard-page" style={{ background: T.bgBase }}>
             <div className="dashboard-container dashboard-stack" style={{ paddingTop: 18 }}>
                 <section className="hero-card" style={{ padding: 18, background: T.bgSurface, border: `1px solid ${T.border}` }}>
                     <div className="flex items-center justify-between gap-3">
@@ -523,10 +535,10 @@ export default function SettingsScreen() {
                                     background: `linear-gradient(180deg, ${T.accentSoft}, transparent)`,
                                 }}
                             >
-                                <div style={{ fontSize: 15, fontWeight: 700, color: T.fgHigh }}>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: T.fgPrimary }}>
                                     Guest mode - {userName}
                                 </div>
-                                <div style={{ fontSize: 12, color: T.fgMedium, marginTop: 6, lineHeight: 1.6 }}>
+                                <div style={{ fontSize: 12, color: T.fgSecondary, marginTop: 6, lineHeight: 1.6 }}>
                                     Your data is local only. Create an account to sync across devices.
                                 </div>
                             </div>
@@ -562,7 +574,7 @@ export default function SettingsScreen() {
                                                         background: T.bgSurface,
                                                         border: `1px solid ${T.accentPrimary}44`,
                                                         borderRadius: 8,
-                                                        color: T.fgHigh,
+                                                        color: T.fgPrimary,
                                                         fontSize: 14,
                                                         padding: '0 10px',
                                                         boxSizing: 'border-box'
@@ -609,7 +621,7 @@ export default function SettingsScreen() {
                                                         style={{
                                                             background: T.bgGlassStrong,
                                                             border: `1px solid ${T.border}`,
-                                                            color: T.fgMedium,
+                                                            color: T.fgSecondary,
                                                             borderRadius: 6,
                                                             padding: '4px 12px',
                                                             fontSize: 11,
@@ -622,7 +634,7 @@ export default function SettingsScreen() {
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-2">
-                                                <div style={{ fontSize: 15, fontWeight: 700, color: T.fgHigh }}>{userName}</div>
+                                                <div style={{ fontSize: 15, fontWeight: 700, color: T.fgPrimary }}>{userName}</div>
                                                 <button
                                                     onClick={() => {
                                                         setEditNameValue(userName)
@@ -632,12 +644,12 @@ export default function SettingsScreen() {
                                                     style={{ background: 'transparent', border: 'none', padding: 2, display: 'flex' }}
                                                     title="Edit Name"
                                                 >
-                                                    <Pencil size={12} color={T.fgSubtle} />
+                                                    <Pencil size={12} color={T.fgTertiary} />
                                                 </button>
                                             </div>
                                         )}
                                         {!isEditingName && (
-                                            <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, marginTop: 3 }}>
+                                            <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 3 }}>
                                                 {session?.user?.email || 'Authenticated'}
                                             </div>
                                         )}
@@ -680,16 +692,55 @@ export default function SettingsScreen() {
                     />
                 </Card>
 
+                <SectionTitle>Trust & Sharing</SectionTitle>
+                <Card>
+                    <div style={{ padding: '16px', borderBottom: `1px solid ${T.border}` }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: T.fgPrimary }}>Privacy</div>
+                        <div style={{ fontSize: 12, color: T.fgSecondary, lineHeight: 1.7, marginTop: 6 }}>
+                            Cushn never connects directly to your bank account. Your data stays local in guest mode or in your synced account. We do not sell or share your subscription data.
+                        </div>
+                    </div>
+                    <div style={{ padding: '16px', borderBottom: `1px solid ${T.border}` }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: T.fgPrimary }}>Your Cushn Stats</div>
+                        <div style={{ fontSize: 12, color: T.fgSecondary, lineHeight: 1.7, marginTop: 6 }}>
+                            {isGuest ? 'Guest mode' : `Member since ${new Date(session?.user?.created_at || Date.now()).toLocaleString('default', { month: 'long', year: 'numeric' })}`}. {activeSubscriptions.length} active subscriptions. {subscriptions.length} tracked total. {duplicateCount} duplicate entries flagged. {formatCurrency(identifiedSavings, currency)} in identified monthly savings.
+                        </div>
+                    </div>
+                    <SettingRow
+                        icon={UserPlus}
+                        label="Share Cushn"
+                        value={`Found ${formatCurrency(duplicateOverlap, currency)} in overlap and ${formatCurrency(savingsHistory.totalSavedToDate, currency)} saved so far.`}
+                        accent
+                        onClick={async () => {
+                            try {
+                                if (navigator.share) {
+                                    await navigator.share({ text: shareText, url: window.location.origin })
+                                } else if (navigator.clipboard?.writeText) {
+                                    await navigator.clipboard.writeText(shareText)
+                                    showToast('success', 'Share message copied')
+                                } else {
+                                    showToast('success', shareText)
+                                }
+                            } catch (err) {
+                                if (err?.name !== 'AbortError') {
+                                    showToast('error', 'Could not share right now')
+                                }
+                            }
+                        }}
+                        last
+                    />
+                </Card>
+
                 <SectionTitle>Data & Backup</SectionTitle>
                 <Card>
                     <SettingRow icon={Download} label="Export Cushn backup" onClick={handleExportJSON} />
                     <SettingRow
                         icon={Upload}
                         label="Import subscriptions from CSV"
-                        value={isImporting ? 'Preparing preview...' : 'Preview before import'}
-                        accent
+                        value={isImporting ? 'Preparing preview...' : 'Useful for migrating a list from another app'}
                         onClick={handleImportClick}
                         disabled={isImporting}
+                        hint="For statements and screenshots, use Add instead."
                     />
                     <SettingRow
                         icon={RotateCcw}
@@ -719,7 +770,7 @@ export default function SettingsScreen() {
                     >
                         <Plus size={14} /> Add custom category
                     </button>
-                    <div style={{ padding: '14px 16px', color: T.fgMedium, fontSize: 12, lineHeight: 1.6 }}>
+                    <div style={{ padding: '14px 16px', color: T.fgSecondary, fontSize: 12, lineHeight: 1.6 }}>
                         Add custom categories when you need them. Default categories are already available across the app.
                     </div>
                 </Card>
@@ -764,7 +815,7 @@ export default function SettingsScreen() {
                         padding: '2px 4px 10px',
                         textAlign: 'center',
                         fontSize: 10,
-                        color: T.fgSubtle,
+                        color: T.fgTertiary,
                     }}
                 >
                     Cushn v{import.meta.env.VITE_APP_VERSION || '1.1.0'}
@@ -789,7 +840,7 @@ export default function SettingsScreen() {
             <BottomSheet open={showCurrencySheet} onClose={() => setShowCurrencySheet(false)}>
                 <div style={{ padding: '0 20px 20px' }}>
                     <div className="flex items-start justify-between gap-3 mb-4">
-                        <h3 className="font-bold" style={{ fontSize: 18, color: T.fgHigh }}>
+                        <h3 className="font-bold" style={{ fontSize: 18, color: T.fgPrimary }}>
                             Select Currency
                         </h3>
                         <button
@@ -802,7 +853,7 @@ export default function SettingsScreen() {
                                 borderRadius: 999,
                                 border: `1px solid ${T.border}`,
                                 background: T.bgElevated,
-                                color: T.fgMedium,
+                                color: T.fgSecondary,
                                 flexShrink: 0,
                             }}
                         >
@@ -830,16 +881,16 @@ export default function SettingsScreen() {
                                             width: 36,
                                             height: 36,
                                             background: currency === c.code ? T.accentPrimary : T.bgElevated,
-                                            color: currency === c.code ? '#fff' : T.fgHigh,
+                                            color: currency === c.code ? '#fff' : T.fgPrimary,
                                         }}
                                     >
                                         {c.symbol}
                                     </div>
-                                    <span className="font-medium" style={{ fontSize: 15, color: T.fgHigh }}>
+                                    <span className="font-medium" style={{ fontSize: 15, color: T.fgPrimary }}>
                                         {c.code}
                                     </span>
                                 </div>
-                                <span className="font-mono" style={{ fontSize: 13, color: T.fgSubtle }}>
+                                <span className="font-mono" style={{ fontSize: 13, color: T.fgTertiary }}>
                                     {c.label}
                                 </span>
                             </button>
@@ -851,7 +902,7 @@ export default function SettingsScreen() {
             <BottomSheet open={showThemeSheet} onClose={() => setShowThemeSheet(false)}>
                 <div style={{ padding: '0 20px 20px' }}>
                     <div className="flex items-start justify-between gap-3 mb-4">
-                        <h3 className="font-bold" style={{ fontSize: 18, color: T.fgHigh }}>
+                        <h3 className="font-bold" style={{ fontSize: 18, color: T.fgPrimary }}>
                             Appearance
                         </h3>
                         <button
@@ -864,7 +915,7 @@ export default function SettingsScreen() {
                                 borderRadius: 999,
                                 border: `1px solid ${T.border}`,
                                 background: T.bgElevated,
-                                color: T.fgMedium
+                                color: T.fgSecondary
                             }}
                         >
                             <span style={{ fontSize: 16 }}>&times;</span>
@@ -884,7 +935,7 @@ export default function SettingsScreen() {
                                     background: themePreference === opt.id ? `${T.accentPrimary}1A` : 'transparent',
                                     border: `1px solid ${themePreference === opt.id ? T.accentPrimary : T.border}`,
                                     borderRadius: 12,
-                                    color: themePreference === opt.id ? T.accentPrimary : T.fgHigh,
+                                    color: themePreference === opt.id ? T.accentPrimary : T.fgPrimary,
                                 }}
                                 onClick={() => {
                                     setThemePreference(opt.id)
@@ -902,7 +953,7 @@ export default function SettingsScreen() {
             <BottomSheet open={showNotificationsSheet} onClose={() => setShowNotificationsSheet(false)}>
                 <div style={{ padding: '0 20px 20px' }}>
                     <div className="flex items-start justify-between gap-3 mb-6">
-                        <h3 className="font-bold" style={{ fontSize: 18, color: T.fgHigh }}>
+                        <h3 className="font-bold" style={{ fontSize: 18, color: T.fgPrimary }}>
                             Renewal Alerts
                         </h3>
                         <button
@@ -915,7 +966,7 @@ export default function SettingsScreen() {
                                 borderRadius: 999,
                                 border: `1px solid ${T.border}`,
                                 background: T.bgElevated,
-                                color: T.fgMedium
+                                color: T.fgSecondary
                             }}
                         >
                             <span style={{ fontSize: 16 }}>&times;</span>
@@ -925,8 +976,8 @@ export default function SettingsScreen() {
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <div style={{ fontSize: 15, fontWeight: 600, color: T.fgHigh }}>Push Notifications</div>
-                                <div style={{ fontSize: 12, color: T.fgSubtle, marginTop: 4 }}>In-app delivery center</div>
+                                <div style={{ fontSize: 15, fontWeight: 600, color: T.fgPrimary }}>Push Notifications</div>
+                                <div style={{ fontSize: 12, color: T.fgTertiary, marginTop: 4 }}>In-app delivery center</div>
                             </div>
                             <button
                                 onClick={toggleReminders}
@@ -961,8 +1012,8 @@ export default function SettingsScreen() {
 
                         <div className="flex items-center justify-between mt-2 pt-4" style={{ borderTop: `1px solid ${T.border}` }}>
                             <div>
-                                <div style={{ fontSize: 15, fontWeight: 600, color: T.fgHigh }}>Email Alerts</div>
-                                <div style={{ fontSize: 12, color: T.fgSubtle, marginTop: 4 }}>Delivery to {session?.user?.email || 'your account default'}</div>
+                                <div style={{ fontSize: 15, fontWeight: 600, color: T.fgPrimary }}>Email Alerts</div>
+                                <div style={{ fontSize: 12, color: T.fgTertiary, marginTop: 4 }}>Delivery to {session?.user?.email || 'your account default'}</div>
                             </div>
                             <button
                                 onClick={toggleEmailReminders}
@@ -996,10 +1047,10 @@ export default function SettingsScreen() {
                         </div>
 
                         <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${T.border}` }}>
-                            <div className="font-bold" style={{ fontSize: 15, color: T.fgHigh, mb: 12 }}>
+                            <div className="font-bold" style={{ fontSize: 15, color: T.fgPrimary, mb: 12 }}>
                                 Reminder timing
                             </div>
-                            <div className="font-mono mt-2" style={{ fontSize: 12, color: T.fgSubtle, marginBottom: 12 }}>
+                            <div className="font-mono mt-2" style={{ fontSize: 12, color: T.fgTertiary, marginBottom: 12 }}>
                                 Select when you want us to alert you.
                             </div>
                             <div className="flex gap-2 flex-wrap">
@@ -1014,7 +1065,7 @@ export default function SettingsScreen() {
                                             style={{
                                                 background: selected ? T.accentSoft : T.bgGlassStrong,
                                                 border: `1px solid ${selected ? T.accentPrimary : T.border}`,
-                                                color: selected ? T.accentPrimary : T.fgMedium,
+                                                color: selected ? T.accentPrimary : T.fgSecondary,
                                                 borderRadius: 999,
                                                 fontSize: 12,
                                                 padding: '8px 14px',
@@ -1049,10 +1100,10 @@ export default function SettingsScreen() {
                             border: `1px solid ${T.border}`,
                         }}
                     >
-                        <div className="font-bold" style={{ fontSize: 16, color: T.fgHigh, marginBottom: 8 }}>
+                        <div className="font-bold" style={{ fontSize: 16, color: T.fgPrimary, marginBottom: 8 }}>
                             Clear all data?
                         </div>
-                        <div className="font-mono" style={{ fontSize: 12, color: T.fgMedium, marginBottom: 20, lineHeight: 1.5 }}>
+                        <div className="font-mono" style={{ fontSize: 12, color: T.fgSecondary, marginBottom: 20, lineHeight: 1.5 }}>
                             This deletes all subscriptions and resets your budget.
                         </div>
                         <div className="flex gap-3">
@@ -1065,7 +1116,7 @@ export default function SettingsScreen() {
                                     borderRadius: 8,
                                     padding: '10px',
                                     fontSize: 13,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     fontFamily: 'monospace',
                                 }}
                             >
@@ -1081,7 +1132,7 @@ export default function SettingsScreen() {
                                     borderRadius: 8,
                                     padding: '10px',
                                     fontSize: 13,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     fontFamily: 'monospace',
                                     opacity: isClearingData ? 0.6 : 1,
                                 }}
@@ -1113,13 +1164,13 @@ export default function SettingsScreen() {
                             border: `1px solid ${T.border}`,
                         }}
                     >
-                        <div className="font-bold" style={{ fontSize: 16, color: T.fgHigh, marginBottom: 8 }}>
+                        <div className="font-bold" style={{ fontSize: 16, color: T.fgPrimary, marginBottom: 8 }}>
                             Delete account permanently?
                         </div>
-                        <div className="font-mono" style={{ fontSize: 12, color: T.fgMedium, marginBottom: 20, lineHeight: 1.5 }}>
+                        <div className="font-mono" style={{ fontSize: 12, color: T.fgSecondary, marginBottom: 20, lineHeight: 1.5 }}>
                             This deletes your Cushn account and all synced backend data, including subscriptions, categories, budget, and reminder preferences. This cannot be undone.
                         </div>
-                        <div className="font-mono" style={{ fontSize: 11, color: T.fgSubtle, marginBottom: 8 }}>
+                        <div className="font-mono" style={{ fontSize: 11, color: T.fgTertiary, marginBottom: 8 }}>
                             Type DELETE to confirm
                         </div>
                         <input
@@ -1133,7 +1184,7 @@ export default function SettingsScreen() {
                                 background: T.bgSurface,
                                 border: `1px solid ${T.border}`,
                                 borderRadius: 8,
-                                color: T.fgHigh,
+                                color: T.fgPrimary,
                                 fontSize: 12,
                                 padding: '0 12px',
                                 marginBottom: 20,
@@ -1153,7 +1204,7 @@ export default function SettingsScreen() {
                                     borderRadius: 8,
                                     padding: '10px',
                                     fontSize: 13,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     fontFamily: 'monospace',
                                 }}
                             >
@@ -1169,7 +1220,7 @@ export default function SettingsScreen() {
                                     borderRadius: 8,
                                     padding: '10px',
                                     fontSize: 13,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     fontFamily: 'monospace',
                                     opacity: (isDeletingAccount || deleteAccountConfirmText !== 'DELETE') ? 0.6 : 1,
                                 }}
@@ -1201,7 +1252,7 @@ export default function SettingsScreen() {
                             border: `1px solid ${T.border}`,
                         }}
                     >
-                        <div className="font-bold" style={{ fontSize: 16, color: T.fgHigh, marginBottom: 8 }}>
+                        <div className="font-bold" style={{ fontSize: 16, color: T.fgPrimary, marginBottom: 8 }}>
                             Add category
                         </div>
                         <input
@@ -1215,7 +1266,7 @@ export default function SettingsScreen() {
                                 background: T.bgSurface,
                                 border: `1px solid ${T.border}`,
                                 borderRadius: 8,
-                                color: T.fgHigh,
+                                color: T.fgPrimary,
                                 fontSize: 12,
                                 padding: '0 12px',
                                 marginBottom: 14,
@@ -1232,7 +1283,7 @@ export default function SettingsScreen() {
                                     borderRadius: 8,
                                     padding: '10px',
                                     fontSize: 13,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     fontFamily: 'monospace',
                                 }}
                             >
@@ -1280,13 +1331,13 @@ export default function SettingsScreen() {
                             border: `1px solid ${T.border}`,
                         }}
                     >
-                        <div className="font-bold" style={{ fontSize: 16, color: T.fgHigh, marginBottom: 6 }}>
+                        <div className="font-bold" style={{ fontSize: 16, color: T.fgPrimary, marginBottom: 6 }}>
                             Restore {restorePreview.brand || 'Cushn'} Backup
                         </div>
-                        <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, marginBottom: 12 }}>
+                        <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginBottom: 12 }}>
                             {restorePreview.fileName} · v{restorePreview.version || 1}
                         </div>
-                        <div className="font-mono" style={{ fontSize: 12, color: T.fgMedium, lineHeight: 1.6, marginBottom: 16 }}>
+                        <div className="font-mono" style={{ fontSize: 12, color: T.fgSecondary, lineHeight: 1.6, marginBottom: 16 }}>
                             Subscriptions: {restorePreview.counts.subscriptions}<br />
                             Categories in backup: {restorePreview.counts.categories}<br />
                             Budget goal: {restorePreview.budget?.monthlyGoal ?? DEFAULT_BUDGET}<br />
@@ -1308,7 +1359,7 @@ export default function SettingsScreen() {
                                     borderRadius: 8,
                                     padding: '10px',
                                     fontSize: 13,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     fontFamily: 'monospace',
                                 }}
                             >
@@ -1341,10 +1392,10 @@ export default function SettingsScreen() {
                     <div style={{ padding: '0 20px 20px' }}>
                         <div className="flex items-start justify-between gap-3 mb-4">
                             <div>
-                                <h3 className="font-bold" style={{ fontSize: 18, color: T.fgHigh }}>
+                                <h3 className="font-bold" style={{ fontSize: 18, color: T.fgPrimary }}>
                                     Import Preview
                                 </h3>
-                                <div className="font-mono" style={{ fontSize: 11, color: T.fgSubtle, marginTop: 4 }}>
+                                <div className="font-mono" style={{ fontSize: 11, color: T.fgTertiary, marginTop: 4 }}>
                                     {importPreview.fileName}
                                 </div>
                             </div>
@@ -1358,7 +1409,7 @@ export default function SettingsScreen() {
                                     borderRadius: 999,
                                     border: `1px solid ${T.border}`,
                                     background: T.bgElevated,
-                                    color: T.fgMedium,
+                                    color: T.fgSecondary,
                                 }}
                             >
                                 <X size={14} />
@@ -1372,7 +1423,7 @@ export default function SettingsScreen() {
                                 { label: 'Errors', value: `${importPreview.errors.length}`, color: T.semDanger },
                             ].map((item) => (
                                 <div key={item.label} className="surface-card-muted" style={{ padding: 12, borderLeft: `3px solid ${item.color}` }}>
-                                    <div className="font-mono" style={{ fontSize: 9, color: T.fgSubtle }}>{item.label}</div>
+                                    <div className="font-mono" style={{ fontSize: 9, color: T.fgTertiary }}>{item.label}</div>
                                     <div className="font-mono font-bold" style={{ fontSize: 18, color: item.color, marginTop: 6 }}>{item.value}</div>
                                 </div>
                             ))}
@@ -1391,8 +1442,8 @@ export default function SettingsScreen() {
                                     <div className="flex items-center gap-3">
                                         <ServiceLogo name={row.name} domain={row.vendorDomain} size={30} catColor={T.accentPrimary} radius={8} />
                                         <div className="flex-1">
-                                            <div style={{ fontSize: 14, fontWeight: 700, color: T.fgHigh }}>{row.name}</div>
-                                            <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, marginTop: 3 }}>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: T.fgPrimary }}>{row.name}</div>
+                                            <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 3 }}>
                                                 {row.category || 'Other'} · {row.cycle || 'monthly'} · {row.currency || currency}
                                             </div>
                                         </div>
@@ -1407,7 +1458,7 @@ export default function SettingsScreen() {
                                             </span>
                                         )}
                                         {row.vendorDomain && (
-                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgSubtle }}>
+                                            <span className="font-mono" style={{ fontSize: 10, color: T.fgTertiary }}>
                                                 {row.vendorDomain}
                                             </span>
                                         )}
@@ -1432,7 +1483,7 @@ export default function SettingsScreen() {
                                     borderRadius: 10,
                                     padding: '11px 12px',
                                     fontSize: 13,
-                                    color: T.fgHigh,
+                                    color: T.fgPrimary,
                                     fontFamily: 'monospace',
                                 }}
                             >
@@ -1485,7 +1536,7 @@ export default function SettingsScreen() {
                         {toast.type === 'success'
                             ? <CheckCircle size={16} color={T.accentPrimary} />
                             : <AlertTriangle size={16} color={T.semDanger} />}
-                        <span className="font-mono" style={{ fontSize: 12, color: toast.type === 'success' ? T.fgHigh : T.semDanger }}>
+                        <span className="font-mono" style={{ fontSize: 12, color: toast.type === 'success' ? T.fgPrimary : T.semDanger }}>
                             {toast.message}
                         </span>
                     </motion.div>

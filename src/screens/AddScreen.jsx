@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, Sparkles, Plus, Loader2, Paperclip, FileText, X } from 'lucide-react'
+import { Mic, Sparkles, Plus, Loader2, Paperclip, X } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import useSubscriptions from '../hooks/useSubscriptions'
 import ConfirmationSheet from '../components/ConfirmationSheet'
@@ -9,15 +9,30 @@ import VoiceInput from '../components/VoiceInput'
 import { useTheme } from '../context/ThemeContext'
 import { useSettings } from '../context/SettingsContext'
 import { parseWithClaude, inferCategory } from '../lib/parseSubscriptions'
-import { BILLING_CYCLES, EXAMPLE_INPUTS } from '../lib/constants'
+import { BILLING_CYCLES } from '../lib/constants'
 import { enrichSubscriptionCandidate } from '../lib/vendorEnrichment'
+import { formatCurrency } from '../lib/formatCurrency'
 import { createImageAttachment, extractFileText, ACCEPTED_FILE_TYPES, hasMeaningfulExtractedText, isImageFile } from '../lib/fileParser'
 import { normalizeVoiceTranscriptForParse } from '../lib/voiceTranscript'
 
+const LANDING_AUDIT_DRAFT_KEY = 'cushn_landing_audit_draft_v1'
 const TYPING_HINTS = [
     'Netflix 15.99 monthly',
     'Spotify 9.99 monthly entertainment',
     'Figma 15 monthly design tools',
+]
+
+const QUICK_ADD_OPTIONS = [
+    { name: 'Netflix', amount: 15.49, cycle: 'monthly' },
+    { name: 'Spotify', amount: 10.99, cycle: 'monthly' },
+    { name: 'YouTube Premium', amount: 13.99, cycle: 'monthly' },
+    { name: 'ChatGPT', amount: 20, cycle: 'monthly' },
+    { name: 'iCloud', amount: 2.99, cycle: 'monthly' },
+    { name: 'Amazon Prime', amount: 14.99, cycle: 'monthly' },
+    { name: 'Adobe', amount: 22.99, cycle: 'monthly' },
+    { name: 'Disney+', amount: 13.99, cycle: 'monthly' },
+    { name: 'Hulu', amount: 17.99, cycle: 'monthly' },
+    { name: 'Gym', amount: 30, cycle: 'monthly' },
 ]
 
 const PARSE_BAR_BOTTOM = 'max(92px, calc(env(safe-area-inset-bottom) + 80px))'
@@ -35,6 +50,7 @@ export default function AddScreen() {
     const [manualNotice, setManualNotice] = useState(null)
     const [isSavingManual, setIsSavingManual] = useState(false)
     const [isConfirmingParsed, setIsConfirmingParsed] = useState(false)
+    const [quickAddSavingName, setQuickAddSavingName] = useState(null)
     const [typingHintIndex, setTypingHintIndex] = useState(0)
     const [typingCharCount, setTypingCharCount] = useState(0)
     // File upload state
@@ -102,6 +118,49 @@ export default function AddScreen() {
         }
     }, [form.name, userPickedCategory, categories, getCategoryIdByName])
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const raw = window.sessionStorage.getItem(LANDING_AUDIT_DRAFT_KEY)
+        if (!raw) return
+
+        try {
+            const draft = JSON.parse(raw)
+            if (!Array.isArray(draft) || draft.length === 0) {
+                window.sessionStorage.removeItem(LANDING_AUDIT_DRAFT_KEY)
+                return
+            }
+
+            const today = new Date().toISOString().slice(0, 10)
+            const hydrated = draft
+                .map((item) => {
+                    const enriched = enrichSubscriptionCandidate({ name: item.name })
+                    return {
+                        name: enriched.name || item.name,
+                        amount: Number(item.monthlyAmount),
+                        cycle: 'monthly',
+                        category: item.category || enriched.category || 'Other',
+                        renewalDate: today,
+                        vendorDomain: enriched.vendorDomain,
+                        vendorConfidence: enriched.vendorConfidence,
+                        vendorMatchType: enriched.vendorMatchType,
+                    }
+                })
+                .filter((item) => item.name && Number.isFinite(item.amount) && item.amount > 0)
+
+            if (hydrated.length > 0) {
+                setParsed(hydrated)
+                setParseNotice({
+                    type: 'info',
+                    text: `Loaded ${hydrated.length} subscription${hydrated.length === 1 ? '' : 's'} from your landing-page estimate. Review before saving.`,
+                })
+            }
+        } catch (err) {
+            console.error('Failed to load landing audit draft:', err)
+        } finally {
+            window.sessionStorage.removeItem(LANDING_AUDIT_DRAFT_KEY)
+        }
+    }, [])
+
     // ─── AI Parse ────────────────────────────────────────────────────────
     const handleParse = async () => {
         if (!input.trim()) {
@@ -168,6 +227,47 @@ export default function AddScreen() {
         const normalized = normalizeVoiceTranscriptForParse(text)
         setInput((prev) => (prev ? prev + ', ' : '') + (normalized || text))
         setMode('text')
+        setParseNotice({
+            type: 'info',
+            text: `Voice captured. Try saying "Netflix fifteen ninety-nine monthly" next time for a cleaner parse.`,
+        })
+    }
+
+    const handleQuickAdd = async (option) => {
+        if (quickAddSavingName) return
+        setQuickAddSavingName(option.name)
+        setParseNotice(null)
+        try {
+            const enriched = enrichSubscriptionCandidate({
+                name: option.name,
+                amount: option.amount,
+                cycle: option.cycle,
+            })
+            await addSubscription({
+                name: enriched.name,
+                amount: option.amount,
+                cycle: option.cycle,
+                categoryId: getCategoryIdByName(enriched.category),
+                renewalDate: new Date().toISOString().slice(0, 10),
+                notes: '',
+                currency,
+                vendorDomain: enriched.vendorDomain,
+                vendorConfidence: enriched.vendorConfidence,
+                vendorMatchType: enriched.vendorMatchType,
+            })
+            setParseNotice({
+                type: 'info',
+                text: `${option.name} was added to your subscriptions. ${formatCurrency(option.amount, currency).replace('.00', '')}/month is now in your library with today's renewal date.`,
+            })
+        } catch (err) {
+            console.error('Quick add failed:', err)
+            setParseNotice({
+                type: 'error',
+                text: `Could not quick-add ${option.name} right now. Try again.`,
+            })
+        } finally {
+            setQuickAddSavingName(null)
+        }
     }
 
     const closeFileImportReview = useCallback(() => {
@@ -316,19 +416,19 @@ export default function AddScreen() {
             <div className="dashboard-container dashboard-stack" style={{ paddingTop: 18 }}>
                 <section
                     className="hero-card"
-                    style={{
-                        padding: 22,
-                        background: T.bgSurface,
-                        border: `1px solid ${T.border}`,
-                        width: '100%',
+                        style={{
+                            padding: 22,
+                            background: T.bgSurface,
+                            border: `1px solid ${T.border}`,
+                            width: '100%',
                     }}
                 >
                     <div className="flex items-start justify-between gap-3" style={{ position: 'relative', zIndex: 1 }}>
                         <div>
                             <p className="page-eyebrow">Workflow</p>
-                            <h1 className="page-title">Add subscriptions</h1>
+                            <h1 className="page-title">What are you paying for?</h1>
                             <p className="page-subtitle" style={{ marginTop: 6, maxWidth: 620 }}>
-                                Paste subscriptions, upload a bank statement (PDF/CSV/TXT), use voice, or fill in the manual form.
+                                Type, paste, speak, or upload. Cushn figures out the rest and shows the real monthly damage before anything is saved.
                             </p>
                         </div>
                     </div>
@@ -361,7 +461,7 @@ export default function AddScreen() {
                                         height: 40,
                                         border: 'none',
                                         background: 'transparent',
-                                        color: mode === item.key ? T.fgOnAccent : T.fgMedium,
+                                        color: mode === item.key ? T.fgOnAccent : T.fgSecondary,
                                         fontWeight: 700,
                                         borderRadius: 999,
                                     }}
@@ -390,8 +490,8 @@ export default function AddScreen() {
                             <div className="surface-card editor-shell" style={{ padding: '18px 18px 20px', width: '100%' }}>
                                 <div className="section-header" style={{ marginBottom: 12 }}>
                                     <div>
-                                        <div className="section-label">Composer</div>
-                                        <h3 className="section-title">Natural language input</h3>
+                                        <div className="section-label">Start here</div>
+                                        <h3 className="section-title">Type what you remember first</h3>
                                     </div>
                                 </div>
                                 {!input.trim() && (
@@ -444,16 +544,16 @@ export default function AddScreen() {
                                             if (parseNotice) setParseNotice(null)
                                         }}
                                         autoFocus
-                                        placeholder="Type here..."
+                                        placeholder="Netflix, Spotify, that gym app, Adobe, ChatGPT..."
                                         className="w-full outline-none resize-none"
                                         style={{
                                             background: 'transparent',
                                             border: 'none',
-                                            color: T.fgHigh,
+                                            color: T.fgPrimary,
                                             fontSize: 16,
                                             lineHeight: 1.8,
                                             minHeight: 280,
-                                            fontFamily: 'Manrope, system-ui, sans-serif',
+                                            fontFamily: 'var(--font-sans)',
                                         }}
                                     />
                                 </div>
@@ -467,7 +567,7 @@ export default function AddScreen() {
                                             style={{
                                                 fontSize: 11,
                                                 lineHeight: 1.55,
-                                                color: parseNotice.type === 'error' ? T.semDanger : T.fgMedium,
+                                                color: parseNotice.type === 'error' ? T.semDanger : T.fgSecondary,
                                                 padding: '8px 10px',
                                                 background: parseNotice.type === 'error' ? `${T.semDanger}12` : T.bgGlassStrong,
                                                 borderColor: parseNotice.type === 'error' ? `${T.semDanger}44` : T.border,
@@ -478,14 +578,14 @@ export default function AddScreen() {
                                     )}
                                     <div className="section-header" style={{ marginBottom: 12, marginTop: parseNotice ? 14 : 0 }}>
                                         <div>
-                                            <div className="section-label">Examples</div>
-                                            <h3 className="section-title">Quick input samples</h3>
+                                            <div className="section-label">One-tap quick add</div>
+                                            <h3 className="section-title">Common subscriptions</h3>
                                         </div>
                                     </div>
                                     <div className="pill-group">
-                                        {EXAMPLE_INPUTS.map((ex, i) => (
+                                        {QUICK_ADD_OPTIONS.map((item) => (
                                             <button
-                                                key={i}
+                                                key={item.name}
                                                 className="interactive-btn font-mono cursor-pointer"
                                                 style={{
                                                     background: T.bgSubtle,
@@ -493,14 +593,46 @@ export default function AddScreen() {
                                                     borderRadius: 999,
                                                     padding: '7px 11px',
                                                     fontSize: 9,
-                                                    color: T.fgMedium,
+                                                    color: T.fgSecondary,
                                                 }}
-                                                onClick={() => setInput((prev) => (prev ? prev + ', ' : '') + ex)}
+                                                onClick={() => void handleQuickAdd(item)}
                                                 type="button"
+                                                disabled={quickAddSavingName === item.name}
                                             >
-                                                "{ex}"
+                                                {quickAddSavingName === item.name
+                                                    ? `Saving ${item.name}...`
+                                                    : `${item.name} ${formatCurrency(item.amount, currency).replace('.00', '')}`}
                                             </button>
                                         ))}
+                                    </div>
+
+                                    <div
+                                        className="surface-card-muted"
+                                        style={{
+                                            marginTop: 14,
+                                            padding: '12px 14px',
+                                            border: `1px solid ${T.border}`,
+                                            background: `${T.accentPrimary}0d`,
+                                        }}
+                                    >
+                                        <div className="section-label">Upload with confidence</div>
+                                        <div style={{ fontSize: 12, color: T.fgSecondary, lineHeight: 1.7, marginTop: 6 }}>
+                                            Upload a bank statement or receipt to catch what you missed. Cushn previews everything before saving. Nothing is added without your approval.
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="surface-card-muted"
+                                        style={{
+                                            marginTop: 12,
+                                            padding: '12px 14px',
+                                            border: `1px solid ${T.border}`,
+                                        }}
+                                    >
+                                        <div className="section-label">Voice tip</div>
+                                        <div style={{ fontSize: 12, color: T.fgSecondary, lineHeight: 1.7, marginTop: 6 }}>
+                                            Try saying: "Netflix fifteen ninety-nine monthly." Voice works best when you say the name, amount, and cadence in one sentence.
+                                        </div>
                                     </div>
                                 </section>
 
@@ -521,12 +653,12 @@ export default function AddScreen() {
                                 borderRadius: 18,
                             }}
                         >
-                            <span className="font-mono" style={{ fontSize: 11, color: T.fgSubtle }}>
+                            <span className="font-mono" style={{ fontSize: 11, color: T.fgTertiary }}>
                                 {fileUploading
                                     ? 'Preparing file review...'
                                     : input.trim()
                                         ? `${input.split(/[,\n;]+/).filter(s => s.trim()).length} item${input.split(/[,\n;]+/).filter(s => s.trim()).length !== 1 ? 's' : ''} detected`
-                                        : 'Upload a statement or paste text to analyze recurring charges.'}
+                                        : 'Start by typing what you remember. Then upload a statement to catch what you missed.'}
                             </span>
                             <div
                                 style={{
@@ -547,13 +679,13 @@ export default function AddScreen() {
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={fileUploading || parsing}
-                                    title="Upload bank statement (PDF, CSV, TXT)"
+                                    title="Upload bank statement after your first pass"
                                     className="interactive-btn flex items-center justify-center rounded-full cursor-pointer border-none"
                                     style={{
                                         width: 40,
                                         height: 40,
                                         background: T.bgSurface,
-                                        color: T.fgMedium,
+                                        color: T.fgSecondary,
                                         border: `1px solid ${T.border}`,
                                         opacity: fileUploading || parsing ? 0.6 : 1,
                                     }}
@@ -605,7 +737,7 @@ export default function AddScreen() {
                                     ) : (
                                         <>
                                             <Sparkles size={14} />
-                                            Parse with AI
+                                            Find subscriptions
                                         </>
                                     )}
                                 </button>
@@ -627,7 +759,7 @@ export default function AddScreen() {
                                     <div className="section-label">Basics</div>
                                     <h2 className="section-title" style={{ marginTop: 8, marginBottom: 14 }}>Subscription details</h2>
                                     <label className="block mb-4">
-                                        <span style={{ fontSize: 11, color: T.fgMedium, marginBottom: 6, display: 'block' }}>
+                                        <span style={{ fontSize: 11, color: T.fgSecondary, marginBottom: 6, display: 'block' }}>
                                             Service Name *
                                         </span>
                                         <input
@@ -643,7 +775,7 @@ export default function AddScreen() {
                                                 background: T.bgGlassStrong,
                                                 border: `1px solid ${T.border}`,
                                                 borderRadius: 14,
-                                                color: T.fgHigh,
+                                                color: T.fgPrimary,
                                                 fontSize: 14,
                                                 padding: '0 14px',
                                                 boxSizing: 'border-box',
@@ -652,11 +784,11 @@ export default function AddScreen() {
                                     </label>
 
                                     <label className="block">
-                                        <span style={{ fontSize: 11, color: T.fgMedium, marginBottom: 6, display: 'block' }}>
+                                        <span style={{ fontSize: 11, color: T.fgSecondary, marginBottom: 6, display: 'block' }}>
                                             Amount *
                                         </span>
                                         <div style={{ position: 'relative' }}>
-                                            <span style={{ position: 'absolute', left: 14, top: 13, fontSize: 14, color: T.fgMedium, fontFamily: 'JetBrains Mono, ui-monospace, monospace' }}>
+                                            <span style={{ position: 'absolute', left: 14, top: 13, fontSize: 14, color: T.fgSecondary, fontFamily: 'var(--font-mono)' }}>
                                                 {currency === 'USD' ? '$' : currency}
                                             </span>
                                             <input
@@ -674,7 +806,7 @@ export default function AddScreen() {
                                                     background: T.bgGlassStrong,
                                                     border: `1px solid ${T.border}`,
                                                     borderRadius: 14,
-                                                    color: T.fgHigh,
+                                                    color: T.fgPrimary,
                                                     fontSize: 14,
                                                     padding: '0 14px 0 52px',
                                                     boxSizing: 'border-box',
@@ -688,7 +820,7 @@ export default function AddScreen() {
                                     <div className="section-label">Billing</div>
                                     <h2 className="section-title" style={{ marginTop: 8, marginBottom: 14 }}>Cycle and category</h2>
                                     <label className="block">
-                                        <span style={{ fontSize: 11, color: T.fgMedium, marginBottom: 8, display: 'block' }}>
+                                        <span style={{ fontSize: 11, color: T.fgSecondary, marginBottom: 8, display: 'block' }}>
                                             Billing Cycle
                                         </span>
                                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -702,7 +834,7 @@ export default function AddScreen() {
                                                         borderRadius: 12,
                                                         background: form.cycle === c ? T.accentSoft : T.bgGlassStrong,
                                                         border: `1px solid ${form.cycle === c ? `${T.accentPrimary}44` : T.border}`,
-                                                        color: form.cycle === c ? T.accentPrimary : T.fgSubtle,
+                                                        color: form.cycle === c ? T.accentPrimary : T.fgTertiary,
                                                         fontSize: 11,
                                                         fontWeight: form.cycle === c ? 700 : 500,
                                                     }}
@@ -713,7 +845,7 @@ export default function AddScreen() {
                                         </div>
                                     </label>
                                     <label className="block">
-                                        <span style={{ fontSize: 11, color: T.fgMedium, marginBottom: 8, display: 'block' }}>
+                                        <span style={{ fontSize: 11, color: T.fgSecondary, marginBottom: 8, display: 'block' }}>
                                             Category
                                         </span>
                                         <div className="flex gap-2 flex-wrap">
@@ -731,7 +863,7 @@ export default function AddScreen() {
                                                         borderRadius: 999,
                                                         background: form.categoryId === cat.id ? `${cat.color}22` : T.bgGlassStrong,
                                                         border: `1px solid ${form.categoryId === cat.id ? cat.color : T.border}`,
-                                                        color: form.categoryId === cat.id ? cat.color : T.fgSubtle,
+                                                        color: form.categoryId === cat.id ? cat.color : T.fgTertiary,
                                                         fontSize: 11,
                                                         fontWeight: form.categoryId === cat.id ? 700 : 500,
                                                     }}
@@ -749,7 +881,7 @@ export default function AddScreen() {
                                     <div className="section-label">Schedule</div>
                                     <h2 className="section-title" style={{ marginTop: 8, marginBottom: 14 }}>Renewal and notes</h2>
                                     <label className="block mb-4">
-                                        <span style={{ fontSize: 11, color: T.fgMedium, marginBottom: 6, display: 'block' }}>
+                                        <span style={{ fontSize: 11, color: T.fgSecondary, marginBottom: 6, display: 'block' }}>
                                             Next Renewal Date
                                         </span>
                                         <input
@@ -762,7 +894,7 @@ export default function AddScreen() {
                                                 background: T.bgGlassStrong,
                                                 border: `1px solid ${T.border}`,
                                                 borderRadius: 14,
-                                                color: T.fgHigh,
+                                                color: T.fgPrimary,
                                                 fontSize: 14,
                                                 padding: '0 14px',
                                                 boxSizing: 'border-box',
@@ -772,7 +904,7 @@ export default function AddScreen() {
                                     </label>
 
                                     <label className="block">
-                                        <span style={{ fontSize: 11, color: T.fgMedium, marginBottom: 6, display: 'block' }}>
+                                        <span style={{ fontSize: 11, color: T.fgSecondary, marginBottom: 6, display: 'block' }}>
                                             Notes (optional)
                                         </span>
                                         <textarea
@@ -785,7 +917,7 @@ export default function AddScreen() {
                                                 background: T.bgGlassStrong,
                                                 border: `1px solid ${T.border}`,
                                                 borderRadius: 14,
-                                                color: T.fgHigh,
+                                                color: T.fgPrimary,
                                                 fontSize: 14,
                                                 padding: '12px 14px',
                                                 boxSizing: 'border-box',
@@ -805,7 +937,7 @@ export default function AddScreen() {
                                 style={{
                                     fontSize: 11,
                                     lineHeight: 1.55,
-                                    color: manualNotice.type === 'error' ? T.semDanger : T.fgMedium,
+                                    color: manualNotice.type === 'error' ? T.semDanger : T.fgSecondary,
                                     padding: '8px 10px',
                                     background: manualNotice.type === 'error' ? `${T.semDanger}12` : T.bgGlassStrong,
                                     borderColor: manualNotice.type === 'error' ? `${T.semDanger}44` : T.border,

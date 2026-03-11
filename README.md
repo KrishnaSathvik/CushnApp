@@ -7,11 +7,15 @@ Cushn is a React + Vite subscription tracker that helps you manage recurring exp
 - **Guest & Authenticated Modes:** Use the app locally with Dexie, track guest sessions in Supabase, or sign up to sync with a full cloud account.
 - **AI-Assisted Parsing:** Parse subscription details from typed text, screenshots, and statement uploads through a Supabase Edge Function.
 - **Smart Import/Export:** Upload PDF, CSV, XLSX, TXT, TSV, and image files into a review dialog before confirming findings; plus backup/restore and vendor-aware duplicate detection.
-- **Comprehensive Tracking:** Manage budgets, view analytics, and track expenses via calendar views.
+- **Review Workflow:** A shared `ReviewSheet` lets users decide whether a subscription is worth keeping, cancel it externally, or snooze the decision for later.
+- **Scheduled Cancellation Tracking:** Cancellation decisions record `cancelledAt` and `endsAt`, keep spend active until the end date passes, and log savings once the cancellation becomes effective.
+- **Redesigned Analytics:** Analytics is organized into four zones: a headline insight, a visual breakdown, an interactive simulator, and a compact 6-month trend.
+- **Comprehensive Tracking:** Manage budgets, savings history, and renewal timing across Home, Analytics, Budget, Calendar, and subscription detail views.
 - **Realtime Sync:** Instantly sync subscriptions, categories, budgets, and in-app reminder events across devices.
 - **Notifications & Reminders:** Live in-app and email reminder delivery for upcoming renewals.
 - **Cloud Preferences:** Sync currency, theme preference, and bill-type mapping for authenticated users.
 - **Vendor Enrichment:** Persisted vendor metadata (domain, confidence, match type) for smarter categorization.
+- **Cancellation Link Mapping:** Common vendors map to known cancellation URLs, with a Google fallback for uncatalogued services.
 
 ## 🛠️ Tech Stack
 
@@ -85,6 +89,17 @@ supabase/verify_production_readiness.sql
 ```
 This query verifies essential requirements: required tables, RLS enablement, indexes, realtime publication membership, email reminder queue logic, authenticated cloud settings storage, pg_cron extension presence, and overall production readiness.
 
+### Subscription Review Fields
+The app now expects the following subscription fields in both local and cloud storage:
+
+- `endsAt`
+- `cancelledAt`
+- `reviewedAt`
+- `snoozedUntil`
+- `cancelUrl`
+
+These power scheduled cancellations, reviewed badges, reminder suppression, and vendor cancellation-link overrides. Dexie storage has been updated locally; make sure your Supabase `subscriptions` table includes matching columns (`ends_at`, `cancelled_at`, `reviewed_at`, `snoozed_until`, `cancel_url`) before using these flows in authenticated mode.
+
 ## ☁️ Edge Functions
 
 Cushn utilizes Supabase Edge Functions for parsing, emails, and account management.
@@ -134,6 +149,25 @@ The app architecture allows users to start locally and optionally transition to 
 - **Guest Session Tracking**: Guest entries create a `guest_sessions` record in Supabase with a display name and metadata, and that session is marked as converted if the guest later signs in.
 - **Migration**: When signing up, guest persistent data (subscriptions, categories, budget, notification preferences, themes, bill-types) automatically migrates to Supabase.
 - **Authenticated Cloud Sync**: Essential user data and profile configurations are saved and synced immediately. UI states temporarily persisting for the session (like installing a PWA banner) remain isolated on the device.
+
+## 🔍 Review & Cancellation Flow
+
+- **Single Review entry point:** Review actions on Home, Analytics, Calendar, and subscription rows funnel into one reusable `ReviewSheet`.
+- **Keep it:** Marks the subscription as reviewed, shows a `Reviewed` badge in the library, and suppresses reconsideration prompts for 90 days.
+- **Remind me later:** Stores a `snoozedUntil` date and hides the prompt for 30 days.
+- **Cancel it:** Opens the vendor cancellation link, asks when access actually ends, and records the cancellation without immediately removing the spend.
+- **Savings history:** Once the effective end date passes, the cancellation contributes to the Savings History page and lowers recurring spend totals across Home, Budget, and Analytics.
+
+## 📊 Analytics Layout
+
+The Analytics page now follows a four-zone structure instead of a stack of competing cards:
+
+1. **Headline insight:** Big recurring-spend number, one sentence about subscriptions worth reconsidering, and the monthly/annual toggle.
+2. **Visual story:** Category-share donut plus a ranked list of subscriptions by cost. Tapping a row opens the `ReviewSheet`.
+3. **Scenario simulator:** One spend bar with live savings feedback and toggle switches for subscriptions worth reconsidering.
+4. **Trend:** Compact 6-month projection chart with inline stats for top category and average per subscription.
+
+Zone 1 is informational only. Review actions happen from specific subscription rows in the ranked list or simulator so the user always has context before opening the sheet.
 
 ## 📥 Add Flow
 

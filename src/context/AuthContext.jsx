@@ -114,6 +114,7 @@ export function AuthProvider({ children }) {
               void convertGuestSessionToUser(guestSessionId, s.user.id).catch(() => {});
             }
             if (shouldMigrate) {
+              localStorage.setItem(ONBOARDED_KEY, "true");
               await migrateLocalToSupabase(s.user.id).catch(() => {});
               clearPendingGuestMigration();
             } else {
@@ -227,6 +228,7 @@ export function AuthProvider({ children }) {
         // Guest → Auth migration: migrate Dexie data to Supabase
         // Do not await these database calls inside onAuthStateChange to prevent GoTrue session deadlocks
         if (shouldMigrate) {
+          localStorage.setItem(ONBOARDED_KEY, "true");
           migrateLocalToSupabase(s.user.id)
             .then(() => {
               clearPendingGuestMigration();
@@ -248,16 +250,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ─── Guest login ───────────────────────────────────────────────────
-  const loginAsGuest = useCallback(async (name) => {
+  const loginAsGuest = useCallback(async (name = "Guest") => {
+    const guestName = String(name || "Guest").trim() || "Guest";
     const guest = {
-      name,
+      name: guestName,
       createdAt: new Date().toISOString(),
-      guestSessionId: await ensureGuestSession(null, name),
+      guestSessionId: await ensureGuestSession(null, guestName),
     };
     persistGuest(guest);
     setSession({
       type: "guest",
-      name,
+      name: guestName,
       createdAt: guest.createdAt,
       guestSessionId: guest.guestSessionId,
     });

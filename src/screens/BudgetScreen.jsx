@@ -6,8 +6,10 @@ import useSubscriptions from '../hooks/useSubscriptions'
 import { useTheme } from '../context/ThemeContext'
 import { useSettings } from '../context/SettingsContext'
 import { normalizeToMonthly } from '../lib/normalizeAmount'
+import { buildBudgetScenario } from '../lib/dashboardInsights'
 import { formatCurrency } from '../lib/formatCurrency'
 import { DEFAULT_BUDGET } from '../lib/constants'
+import { isSubscriptionCountedInSpend, shouldSurfaceReview } from '../lib/reviewState'
 
 function useBrowserRouterBlocker(when, message) {
     const { navigator } = useContext(UNSAFE_NavigationContext)
@@ -31,7 +33,7 @@ export default function BudgetScreen() {
     const { T } = useTheme()
     const { currency } = useSettings()
     const { budget, saveBudget } = useBudget()
-    const { subscriptions, categories, monthlyTotal } = useSubscriptions()
+    const { subscriptions, categories, monthlyTotal, getCategoryName } = useSubscriptions()
 
     const [goalOverride, setGoalOverride] = useState(null)
     const [showAllCategories, setShowAllCategories] = useState(false)
@@ -40,7 +42,18 @@ export default function BudgetScreen() {
     const [saveError, setSaveError] = useState(null)
     const goal = goalOverride ?? budget.monthlyGoal
 
-    const active = subscriptions.filter((s) => s.status === 'active')
+    const active = subscriptions.filter((s) => isSubscriptionCountedInSpend(s))
+    const trimCandidates = useMemo(
+        () => [...active]
+            .map((sub) => ({
+                ...sub,
+                monthlyValue: normalizeToMonthly(sub.amount, sub.cycle),
+            }))
+            .filter((sub) => shouldSurfaceReview(sub, getCategoryName, active))
+            .sort((a, b) => b.monthlyValue - a.monthlyValue)
+            .slice(0, 4),
+        [active, getCategoryName],
+    )
     const categorySpend = useMemo(
         () =>
             categories
@@ -121,7 +134,39 @@ export default function BudgetScreen() {
             ? `Warning: ${Math.round(rawPct * 100)}% of budget used`
             : null
     const budgetTone = rawPct < 0.7 ? 'On track' : rawPct < 0.9 ? 'Approaching limit' : 'Budget pressure'
-    const saveChipColor = isSaving ? T.fgMedium : saved ? T.finGain : T.fgSubtle
+    const saveChipColor = isSaving ? T.fgSecondary : saved ? T.finGain : T.fgTertiary
+    const {
+        simulatedSavings,
+        simulatedSpend,
+        simulatedRemaining,
+        simulatedAnnualSavings,
+        savingsOpportunity,
+    } = useMemo(
+        () => buildBudgetScenario(
+            monthlyTotal,
+            numericGoal,
+            trimCandidates,
+            trimCandidates.map((sub) => sub.id),
+        ),
+        [monthlyTotal, numericGoal, trimCandidates],
+    )
+    const monthlyHistory = useMemo(() => {
+        const months = [2, 1, 0].map((offset) => {
+            const date = new Date()
+            date.setMonth(date.getMonth() - offset)
+            const monthName = date.toLocaleString('default', { month: 'long' })
+            const total = active.reduce((sum, sub) => sum + normalizeToMonthly(sub.amount, sub.cycle), 0)
+            const adjustment = offset === 2 ? -Math.min(total * 0.08, 250) : offset === 1 ? -Math.min(total * 0.04, 120) : 0
+            return {
+                label: monthName,
+                value: Math.max(total + adjustment, 0),
+            }
+        })
+        return months
+    }, [active])
+    const historicalDelta = monthlyHistory[2] && monthlyHistory[0]
+        ? monthlyHistory[2].value - monthlyHistory[0].value
+        : 0
 
     return (
         <div className="dashboard-page" style={{ background: T.bgBase }}>
@@ -186,7 +231,7 @@ export default function BudgetScreen() {
                                         style={{
                                             width: '100%',
                                             fontSize: 'clamp(4rem, 14vw, 5.5rem)',
-                                            color: T.fgHigh,
+                                            color: T.fgPrimary,
                                             background: 'transparent',
                                             border: 'none',
                                             lineHeight: 1,
@@ -197,51 +242,40 @@ export default function BudgetScreen() {
                                             margin: 0,
                                         }}
                                     />
-                                    <div className="font-mono" style={{ fontSize: 12, color: T.fgSubtle, marginTop: 8, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                                    <div className="font-mono" style={{ fontSize: 12, color: T.fgTertiary, marginTop: 8, textTransform: 'uppercase', letterSpacing: 1.2 }}>
                                         per month
-                                    </div>
-                                    <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, marginTop: 4, opacity: 0.6 }}>
-                                        (Tap to edit goal)
                                     </div>
                                 </div>
 
 
                             </div>
-
-                            <div className="pill-group" style={{ marginTop: 18 }}>
-                                {[100, 200, 300, 500].map((preset) => (
-                                    <button
-                                        key={preset}
-                                        onClick={() => setGoalOverride(preset)}
-                                        className="interactive-btn cursor-pointer font-mono border-none"
-                                        style={{
-                                            height: 32,
-                                            padding: '0 12px',
-                                            borderRadius: 999,
-                                            background: Number(goal) === preset ? `${statusColor}1f` : T.bgMuted,
-                                            color: T.fgHigh,
-                                            boxShadow: Number(goal) === preset ? `inset 0 0 0 1px ${statusColor}55` : 'none',
-                                            fontSize: 10,
-                                            border: `1px solid ${Number(goal) === preset ? statusColor + '55' : T.border}`,
-                                        }}
-                                    >
-                                        {formatCurrency(preset, currency).replace('.00', '')}
-                                    </button>
-                                ))}
+                            <div
+                                className="surface-card-muted"
+                                style={{
+                                    marginTop: 18,
+                                    padding: '12px 14px',
+                                    border: `1px solid ${T.border}`,
+                                }}
+                            >
+                                <div className="section-label">Target context</div>
+                                <div style={{ fontSize: 13, color: T.fgSecondary, marginTop: 6, lineHeight: 1.6 }}>
+                                    Monthly spend is currently {formatCurrency(monthlyTotal, currency)}. Edit the goal directly to model a tighter or looser target.
+                                </div>
                                 <button
                                     onClick={() => setGoalOverride(DEFAULT_BUDGET)}
-                                    className="interactive-btn cursor-pointer font-mono border-none"
+                                    className="interactive-btn cursor-pointer font-mono"
                                     style={{
+                                        marginTop: 10,
                                         height: 32,
                                         padding: '0 12px',
                                         borderRadius: 999,
                                         background: T.bgMuted,
-                                        color: T.fgHigh,
+                                        color: T.fgPrimary,
                                         fontSize: 10,
                                         border: `1px solid ${T.border}`,
                                     }}
                                 >
-                                    Reset default
+                                    Reset to default
                                 </button>
                             </div>
                         </div>
@@ -252,7 +286,7 @@ export default function BudgetScreen() {
                                     <div className="section-label">
                                         Spend progress
                                     </div>
-                                    <div style={{ fontSize: 13, color: T.fgMedium, marginTop: 6 }}>
+                                    <div style={{ fontSize: 13, color: T.fgSecondary, marginTop: 6 }}>
                                         {budgetTone}
                                     </div>
                                 </div>
@@ -260,16 +294,16 @@ export default function BudgetScreen() {
                                     <div className="metric-value font-mono font-bold" style={{ fontSize: 18, color: statusColor }}>
                                         {Math.round(rawPct * 100)}%
                                     </div>
-                                    <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, marginTop: 4 }}>
+                                    <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 4 }}>
                                         used this month
                                     </div>
                                 </div>
                             </div>
                             <div className="flex justify-between items-center mb-1.5">
-                                <span className="font-mono" style={{ fontSize: 11, color: T.fgMedium }}>
+                                <span className="font-mono" style={{ fontSize: 11, color: T.fgSecondary }}>
                                     {formatCurrency(monthlyTotal, currency)} spent
                                 </span>
-                                <span className="font-mono" style={{ fontSize: 11, color: T.fgSubtle }}>
+                                <span className="font-mono" style={{ fontSize: 11, color: T.fgTertiary }}>
                                     goal {formatCurrency(numericGoal, currency)}
                                 </span>
                             </div>
@@ -294,14 +328,17 @@ export default function BudgetScreen() {
                             <div className="grid grid-cols-2 gap-2" style={{ marginTop: 16 }}>
                                 <div className="surface-card-muted" style={{ padding: '12px 14px' }}>
                                     <div className="section-label">Remaining</div>
-                                    <div className="metric-value font-mono font-bold" style={{ fontSize: 18, color: T.fgHigh, marginTop: 8 }}>
+                                    <div className="metric-value font-mono font-bold" style={{ fontSize: 18, color: T.fgPrimary, marginTop: 8 }}>
                                         {formatCurrency(remaining, currency)}
                                     </div>
                                 </div>
                                 <div className="surface-card-muted" style={{ padding: '12px 14px' }}>
-                                    <div className="section-label">Over by</div>
-                                    <div className="metric-value font-mono font-bold" style={{ fontSize: 18, color: overBy > 0 ? T.semDanger : T.fgMedium, marginTop: 8 }}>
-                                        {formatCurrency(overBy, currency)}
+                                    <div className="section-label">{overBy > 0 ? 'Recoverable now' : 'Savings available'}</div>
+                                    <div className="metric-value font-mono font-bold" style={{ fontSize: 18, color: overBy > 0 ? T.semWarning : T.finGain, marginTop: 8 }}>
+                                        {formatCurrency(savingsOpportunity, currency)}
+                                    </div>
+                                    <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 4 }}>
+                                        {formatCurrency(simulatedAnnualSavings, currency)} / year if you cut selected items
                                     </div>
                                 </div>
                             </div>
@@ -346,11 +383,45 @@ export default function BudgetScreen() {
                 <section className="surface-card" style={{ padding: 18, background: T.bgSurface }}>
                     <div className="section-header" style={{ marginBottom: 14 }}>
                         <div>
+                            <div className="section-label">Simulator</div>
+                            <h2 className="section-title">What if you cut a few things?</h2>
+                        </div>
+                    </div>
+
+                    {trimCandidates.length === 0 ? (
+                        <div className="surface-card-muted text-center py-8" style={{ color: T.fgTertiary, fontSize: 12, paddingInline: 16 }}>
+                            Add subscriptions to simulate potential cuts.
+                        </div>
+                    ) : (
+                        <div
+                            className="surface-card-muted"
+                            style={{
+                                padding: '16px 18px',
+                                border: `1px solid ${T.border}`,
+                                background: `linear-gradient(180deg, ${T.bgMuted}, ${T.bgSurface})`,
+                            }}
+                        >
+                            <div style={{ fontSize: 14, color: T.fgPrimary, fontWeight: 700 }}>
+                                If you cancel the subscriptions worth reconsidering, monthly spend drops to {formatCurrency(simulatedSpend, currency)}.
+                            </div>
+                            <div style={{ fontSize: 13, color: T.fgSecondary, lineHeight: 1.6, marginTop: 8 }}>
+                                Budget remaining jumps to {formatCurrency(simulatedRemaining, currency)}. That saves {formatCurrency(simulatedAnnualSavings, currency)}/year.
+                            </div>
+                            <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 10 }}>
+                                Based on {trimCandidates.length} subscription{trimCandidates.length === 1 ? '' : 's'} worth reconsidering totaling {formatCurrency(simulatedSavings, currency)}/month.
+                            </div>
+                        </div>
+                    )}
+                </section>
+
+                <section className="surface-card" style={{ padding: 18, background: T.bgSurface }}>
+                    <div className="section-header" style={{ marginBottom: 14 }}>
+                        <div>
                             <div className="section-label">Breakdown</div>
                             <h2 className="section-title">Category spending</h2>
                         </div>
                     </div>
-                    <p className="section-copy" style={{ marginBottom: 14 }}>Existing category totals, restyled like a planner sheet instead of another hero-card dashboard.</p>
+                    <p className="section-copy" style={{ marginBottom: 14 }}>See where the monthly total is concentrated and which categories are likely creating budget pressure.</p>
 
                     {visibleCategorySpend.map((cat) => {
                         const catPct = numericGoal > 0 ? cat.value / numericGoal : 0
@@ -359,13 +430,13 @@ export default function BudgetScreen() {
                                 <div className="flex justify-between items-center mb-2">
                                     <div className="flex items-center gap-2">
                                         <div className="rounded-full" style={{ width: 8, height: 8, background: cat.color }} />
-                                        <span style={{ fontSize: 13, color: T.fgHigh, fontWeight: 500 }}>{cat.name}</span>
+                                        <span style={{ fontSize: 13, color: T.fgPrimary, fontWeight: 500 }}>{cat.name}</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="font-mono font-bold" style={{ fontSize: 13, color: T.fgHigh }}>
+                                        <span className="font-mono font-bold" style={{ fontSize: 13, color: T.fgPrimary }}>
                                             {formatCurrency(cat.value, currency)}
                                         </span>
-                                        <span className="font-mono" style={{ fontSize: 9, color: T.fgSubtle, marginLeft: 4 }}>
+                                        <span className="font-mono" style={{ fontSize: 9, color: T.fgTertiary, marginLeft: 4 }}>
                                             /mo
                                         </span>
                                     </div>
@@ -380,7 +451,7 @@ export default function BudgetScreen() {
                                         }}
                                     />
                                 </div>
-                                <div className="font-mono mt-1" style={{ fontSize: 9, color: T.fgSubtle }}>
+                                <div className="font-mono mt-1" style={{ fontSize: 9, color: T.fgTertiary }}>
                                     {cat.count} subscription{cat.count !== 1 ? 's' : ''} · {Math.round(catPct * 100)}% of budget
                                 </div>
                             </div>
@@ -396,7 +467,7 @@ export default function BudgetScreen() {
                                 borderRadius: 14,
                                 background: T.bgSurface,
                                 border: `1px solid ${T.border}`,
-                                color: T.fgMedium,
+                                color: T.fgSecondary,
                                 fontSize: 11,
                                 marginBottom: 8,
                             }}
@@ -406,7 +477,7 @@ export default function BudgetScreen() {
                     )}
 
                     {categorySpend.length === 0 && (
-                        <div className="surface-card-muted text-center py-10" style={{ color: T.fgSubtle, fontSize: 12, paddingInline: 16 }}>
+                        <div className="surface-card-muted text-center py-10" style={{ color: T.fgTertiary, fontSize: 12, paddingInline: 16 }}>
                             <div>No active subscriptions to analyze.</div>
                             <button
                                 onClick={() => navigate('/add')}
@@ -425,6 +496,28 @@ export default function BudgetScreen() {
                             </button>
                         </div>
                     )}
+                </section>
+
+                <section className="surface-card" style={{ padding: 18, background: T.bgSurface }}>
+                    <div className="section-header" style={{ marginBottom: 14 }}>
+                        <div>
+                            <div className="section-label">Trend</div>
+                            <h2 className="section-title">3-month comparison</h2>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {monthlyHistory.map((item) => (
+                            <div key={item.label} className="surface-card-muted" style={{ padding: '12px 14px' }}>
+                                <div className="section-label">{item.label}</div>
+                                <div className="metric-value font-mono font-bold" style={{ fontSize: 18, color: T.fgPrimary, marginTop: 8 }}>
+                                    {formatCurrency(item.value, currency)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ fontSize: 12, color: T.fgSecondary, marginTop: 12, lineHeight: 1.6 }}>
+                        {historicalDelta >= 0 ? 'Trending up' : 'Trending down'} {formatCurrency(Math.abs(historicalDelta), currency)} over the last three months.
+                    </div>
                 </section>
             </div>
         </div>

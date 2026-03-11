@@ -11,6 +11,13 @@ db.version(1).stores({
   budget: '++id, monthlyGoal, currency, updatedAt',
 })
 
+db.version(2).stores({
+  subscriptions:
+    '++id, name, amount, currency, cycle, categoryId, startDate, renewalDate, status, notes, icon, createdAt, rawInput, endsAt, cancelledAt, reviewedAt, snoozedUntil, cancelUrl',
+  categories: '++id, name, color, icon, isDefault',
+  budget: '++id, monthlyGoal, currency, updatedAt',
+})
+
 
 
 export async function seedDefaults() {

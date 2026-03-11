@@ -1,5 +1,6 @@
 import { enrichSubscriptionCandidate } from './vendorEnrichment'
 import { coerceFutureRenewalDate, getBaseDate, normalizeCategory, normalizeCycle } from '../../shared/parseNormalization.ts'
+import { inferCategoryFromText } from '../../shared/categoryModel.ts'
 
 const STOP_WORDS = new Set([
     'subscription',
@@ -359,6 +360,7 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
         const sub = { name: '', rawName: '', amount: 0, cycle: 'monthly', category: 'Other', renewalDate: '' }
         const isCreditAccountLine = /\bcredit\s+card\b/i.test(item)
         const preservePaymentInName = /\bcar\s+payment\b/i.test(item)
+        const preserveInsuranceInName = /\binsurance\b/i.test(item)
 
         sub.amount = extractAmountFromText(item)
 
@@ -387,7 +389,12 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
                     : /\b(autopay|auto pay|autopmt|autopayment|payment|debit|credit|card|visa|mastercard|mc|amex|discover|ach|withdrawal|purchase|pos|checkcard)\b/gi,
                 '',
             )
-            .replace(/(entertainment|dev\s*tools?|health|productivity|cloud|news|other)/gi, '') // remove category hints
+            .replace(
+                preserveInsuranceInName
+                    ? /(entertainment|dev\s*tools?|health(?:\s*&\s*fitness)?|productivity|cloud(?:\s*&\s*storage)?|news(?:\s*&\s*media)?|debt(?:\s*&\s*loans)?|utilities|auto(?:\s*&\s*transport)?|money\s*transfers?|shopping|other)/gi
+                    : /(entertainment|dev\s*tools?|health(?:\s*&\s*fitness)?|productivity|cloud(?:\s*&\s*storage)?|news(?:\s*&\s*media)?|debt(?:\s*&\s*loans)?|utilities|insurance|auto(?:\s*&\s*transport)?|money\s*transfers?|shopping|other)/gi,
+                '',
+            ) // remove category hints
             .replace(/[:•.-]+/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
@@ -426,24 +433,8 @@ export function localParse(text, currentDate = new Date().toISOString().slice(0,
 }
 
 // Category inference from service name
-const CATEGORY_MAP = {
-    Entertainment: ['netflix', 'spotify', 'hulu', 'disney', 'hbo', 'peacock', 'paramount', 'crunchyroll', 'twitch', 'youtube', 'apple tv', 'music', 'streaming', 'entertainment', 'film', 'movie', 'tv', 'amc'],
-    'Dev Tools': ['github', 'figma', 'vercel', 'netlify', 'linear', 'jira', 'postman', 'sentry', 'datadog', 'aws', 'azure', 'digital ocean', 'heroku', 'dev', 'code', 'tools', 'hosting', 'design', 'cursor'],
-    Health: ['headspace', 'calm', 'myfitnesspal', 'peloton', 'whoop', 'health', 'fitness', 'gym', 'workout', 'meditation'],
-    Productivity: ['claude', 'chatgpt', 'chat gpt', 'perplexity', 'slack', 'zoom', 'loom', 'todoist', 'obsidian', 'notion', 'craft', 'openai', 'ai', 'productivity', 'grok', 'linkedin premium', 'adobe'],
-    Cloud: ['icloud', 'dropbox', 'google one', 'onedrive', 'box', 'apple one', 'storage', 'cloud', 'backup', 'google drive'],
-    'News & Media': ['nytimes', 'new york times', 'medium', 'substack', 'athletic', 'economist', 'news', 'media', 'linkedin'],
-    Insurance: ['insurance', 'geico', 'state farm', 'progressive', 'health insurance', 'car insurance', 'renters', 'homeowners'],
-    Utilities: ['rent', 'mortgage', 'electric', 'water', 'gas', 'internet', 'phone', 'cell', 'wifi', 'utility', 'trash', 'sewer', 'sewage', 'pg&e', 'comcast', 'verizon', 'att', 't-mobile'],
-    'Loans & Cards': ['loan', 'student', 'car payment', 'auto', 'debt', 'credit card', 'card payment', 'upstart', 'affirm', 'klarna', 'afterpay'],
-}
-
 export function inferCategory(text) {
-    const lower = text.toLowerCase()
-    for (const [cat, keywords] of Object.entries(CATEGORY_MAP)) {
-        if (keywords.some((k) => lower.includes(k))) return cat
-    }
-    return 'Other'
+    return inferCategoryFromText(text)
 }
 
 function normalizeSubscription(sub, currentDate, sourceText, totalParsedCount = 1) {

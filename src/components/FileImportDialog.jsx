@@ -37,7 +37,7 @@ function buildSteps(stage) {
 function StepIcon({ step, T }) {
     if (step.state === 'complete') return <CheckCircle2 size={15} color={T.semSuccess} />
     if (step.state === 'active') return <Loader2 size={15} color={T.accentPrimary} className="animate-spin" />
-    return <Search size={15} color={T.fgSubtle} />
+    return <Search size={15} color={T.fgTertiary} />
 }
 
 export default function FileImportDialog({
@@ -137,7 +137,7 @@ export default function FileImportDialog({
                                         height: 32,
                                         borderRadius: 999,
                                         background: T.bgElevated,
-                                        color: T.fgMedium,
+                                        color: T.fgSecondary,
                                         border: `1px solid ${T.border}`,
                                         display: 'flex',
                                         alignItems: 'center',
@@ -178,7 +178,7 @@ export default function FileImportDialog({
                                                     background: T.bgSurface,
                                                     border: `1px solid ${T.border}`,
                                                     fontSize: 10,
-                                                    color: T.fgMedium,
+                                                    color: T.fgSecondary,
                                                 }}
                                             >
                                                 <FileText size={12} />
@@ -221,7 +221,7 @@ export default function FileImportDialog({
                                                         style={{
                                                             padding: '8px 9px',
                                                             fontSize: 9,
-                                                            color: T.fgMedium,
+                                                            color: T.fgSecondary,
                                                             borderTop: `1px solid ${T.border}`,
                                                             whiteSpace: 'nowrap',
                                                             overflow: 'hidden',
@@ -256,7 +256,7 @@ export default function FileImportDialog({
                                                 }}
                                             >
                                                 <StepIcon step={step} T={T} />
-                                                <div style={{ fontSize: 13, color: step.state === 'active' ? T.fgHigh : T.fgMedium }}>
+                                                <div style={{ fontSize: 13, color: step.state === 'active' ? T.fgPrimary : T.fgSecondary }}>
                                                     {step.label}
                                                 </div>
                                             </div>
@@ -271,7 +271,7 @@ export default function FileImportDialog({
                                                 <div className="section-label">Extraction</div>
                                                 <h3 className="section-title">{extractedText === 'Images uploaded for direct AI analysis.' ? 'Direct image analysis' : 'Readable text preview'}</h3>
                                             </div>
-                                            <div className="font-mono shrink-0" style={{ fontSize: 10, color: T.fgSubtle }}>
+                                            <div className="font-mono shrink-0" style={{ fontSize: 10, color: T.fgTertiary }}>
                                                 {extractedText === 'Images uploaded for direct AI analysis.' ? 'Vision input' : `${charCount} chars • ${lineCount} lines`}
                                             </div>
                                         </div>
@@ -286,7 +286,7 @@ export default function FileImportDialog({
                                                 border: `1px solid ${T.border}`,
                                                 fontSize: 10,
                                                 lineHeight: 1.55,
-                                                color: T.fgMedium,
+                                                color: T.fgSecondary,
                                                 whiteSpace: 'pre-wrap',
                                             }}
                                         >
@@ -308,7 +308,7 @@ export default function FileImportDialog({
                                         <div style={{ fontSize: 14, fontWeight: 700, color: T.semDanger }}>
                                             Could not analyze this file
                                         </div>
-                                        <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.55, color: T.fgMedium }}>
+                                        <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.55, color: T.fgSecondary }}>
                                             {error}
                                         </div>
                                     </div>
@@ -323,13 +323,13 @@ export default function FileImportDialog({
                                                 background: T.bgSurface,
                                             }}
                                         >
-                                            <div className="flex items-center gap-2" style={{ color: T.fgHigh }}>
+                                            <div className="flex items-center gap-2" style={{ color: T.fgPrimary }}>
                                                 <Sparkles size={16} color={T.accentPrimary} />
                                                 <div style={{ fontSize: 14, fontWeight: 700 }}>
                                                     No subscriptions found
                                                 </div>
                                             </div>
-                                            <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.55, color: T.fgMedium }}>
+                                            <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.55, color: T.fgSecondary }}>
                                                 We finished analyzing the uploaded file and did not find any clear recurring subscriptions or bills.
                                             </div>
                                         </div>
@@ -340,7 +340,7 @@ export default function FileImportDialog({
                                         >
                                             <div>
                                                 <div className="section-label">Final findings</div>
-                                                <div style={{ fontSize: 15, fontWeight: 800, color: T.fgHigh, marginTop: 4 }}>
+                                                <div style={{ fontSize: 15, fontWeight: 800, color: T.fgPrimary, marginTop: 4 }}>
                                                     0 subscriptions detected
                                                 </div>
                                             </div>
@@ -412,10 +412,10 @@ export default function FileImportDialog({
                                                                     catColor={getCatColor(sub.category)}
                                                                 />
                                                                 <div style={{ flex: 1 }}>
-                                                                    <div style={{ fontSize: 14, fontWeight: 700, color: T.fgHigh }}>
+                                                                    <div style={{ fontSize: 14, fontWeight: 700, color: T.fgPrimary }}>
                                                                         {sub.name}
                                                                     </div>
-                                                                    <div className="font-mono" style={{ fontSize: 10, color: T.fgSubtle, marginTop: 2 }}>
+                                                                    <div className="font-mono" style={{ fontSize: 10, color: T.fgTertiary, marginTop: 2 }}>
                                                                         {sub.renewalDate ? `Next: ${sub.renewalDate}` : 'Renewal date unavailable'}
                                                                     </div>
                                                                 </div>
@@ -456,14 +456,14 @@ export default function FileImportDialog({
                                                             <div className="flex gap-1.5 flex-wrap" style={{ marginTop: 10 }}>
                                                                 <Chip color={T.accentPrimary} size={9}>{formatCurrency(sub.amount, currency)}</Chip>
                                                                 <Chip color={getCatColor(sub.category)} size={9}>{sub.category}</Chip>
-                                                                <Chip color={T.fgSubtle} size={9}>{sub.cycle}</Chip>
+                                                                <Chip color={T.fgTertiary} size={9}>{sub.cycle}</Chip>
                                                                 {sub.vendorDomain && <Chip color={T.semInfo} size={9}>{sub.vendorDomain}</Chip>}
                                                             </div>
                                                         </div>
                                                     )
                                                 })}
                                                 {subs.length === 0 && (
-                                                    <div style={{ fontSize: 13, color: T.fgSubtle }}>
+                                                    <div style={{ fontSize: 13, color: T.fgTertiary }}>
                                                         No findings left to confirm.
                                                     </div>
                                                 )}

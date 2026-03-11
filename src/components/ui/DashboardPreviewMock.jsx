@@ -126,7 +126,7 @@ export default function DashboardPreviewMock({ compact = false, variant = "landi
             className="font-mono"
             style={{
               fontSize: 11,
-              color: T.fgHigh,
+              color: T.fgPrimary,
               letterSpacing: 0.6,
               fontWeight: 700,
             }}
@@ -160,10 +160,10 @@ export default function DashboardPreviewMock({ compact = false, variant = "landi
       >
         {config.metrics.map((item) => (
           <AppSurfaceCard key={item.label} tone="muted" style={{ padding: "9px 8px", background: T.bgElevated }}>
-            <div className="font-mono" style={{ fontSize: 9, color: T.fgSubtle }}>
+            <div className="font-mono" style={{ fontSize: 9, color: T.fgTertiary }}>
               {item.label}
             </div>
-            <div className="font-mono" style={{ marginTop: 4, fontSize: 15, color: T.fgHigh, fontWeight: 700 }}>
+            <div className="font-mono" style={{ marginTop: 4, fontSize: 15, color: T.fgPrimary, fontWeight: 700 }}>
               {item.value}
             </div>
           </AppSurfaceCard>
@@ -172,7 +172,7 @@ export default function DashboardPreviewMock({ compact = false, variant = "landi
 
       <AppSurfaceCard tone="muted" style={{ background: T.bgElevated, padding: 10, marginBottom: 10 }}>
         <div className="flex justify-between items-center mb-2">
-          <span className="font-mono" style={{ fontSize: 10, color: T.fgMedium, fontWeight: 700 }}>
+          <span className="font-mono" style={{ fontSize: 10, color: T.fgSecondary, fontWeight: 700 }}>
             {config.trendLabel}
           </span>
           <span className="font-mono" style={{ fontSize: 10, color: T[config.trendDotColor] || T.accentPrimary, fontWeight: 700 }}>
@@ -193,21 +193,21 @@ export default function DashboardPreviewMock({ compact = false, variant = "landi
       </AppSurfaceCard>
 
       <AppSurfaceCard tone="muted" style={{ background: T.bgElevated, padding: 10 }}>
-        <div className="font-mono" style={{ fontSize: 10, color: T.fgMedium, letterSpacing: 0.8, fontWeight: 700, marginBottom: 8 }}>
+        <div className="font-mono" style={{ fontSize: 10, color: T.fgSecondary, letterSpacing: 0.8, fontWeight: 700, marginBottom: 8 }}>
           {config.listLabel}
         </div>
         {config.rows.map((row) =>
           row.bar ? (
             <div key={row.name} className="flex items-center gap-2.5" style={{ padding: "4px 0", marginBottom: 2 }}>
               <div className="flex-1">
-                <div className="font-mono" style={{ fontSize: 9, color: T.fgMedium, marginBottom: 4 }}>
+                <div className="font-mono" style={{ fontSize: 9, color: T.fgSecondary, marginBottom: 4 }}>
                   {row.name}
                 </div>
                 <div style={{ height: 6, borderRadius: 999, background: T.border, overflow: "hidden" }}>
                   <div style={{ width: `${row.meta}%`, height: "100%", background: T[row.colorKey] || T.accentPrimary, borderRadius: 999 }} />
                 </div>
               </div>
-              <div className="font-mono" style={{ fontSize: 11, color: T.fgHigh, fontWeight: 700 }}>
+              <div className="font-mono" style={{ fontSize: 11, color: T.fgPrimary, fontWeight: 700 }}>
                 {row.amount}
               </div>
             </div>
@@ -215,10 +215,10 @@ export default function DashboardPreviewMock({ compact = false, variant = "landi
             <div key={row.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderTop: `1px solid ${T.border}` }}>
               <PreviewLogo name={row.name} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: T.fgHigh }}>{row.name}</div>
-                <div style={{ fontSize: 10, color: T.fgSubtle }}>{row.meta}</div>
+                <div style={{ fontSize: 12, color: T.fgPrimary }}>{row.name}</div>
+                <div style={{ fontSize: 10, color: T.fgTertiary }}>{row.meta}</div>
               </div>
-              <div style={{ fontSize: 11, color: T.accentPrimary, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
+              <div style={{ fontSize: 11, color: T.accentPrimary, fontWeight: 700, fontFamily: "var(--font-mono)" }}>
                 {row.amount}
               </div>
             </div>

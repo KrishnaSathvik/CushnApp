@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Cushn',
         short_name: 'Cushn',
-        description: 'Your spending cushion for subscriptions, renewals, budgets, reminders, and analytics.',
+        description: 'Find out what your subscriptions really cost. Cushn surfaces hidden spend, flags waste, and reminds you before renewals hit.',
         theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',

@@ -15,6 +15,7 @@ import {
     subscribeToChanges,
 } from '../lib/dataService'
 import { normalizeToMonthly } from '../lib/normalizeAmount'
+import { isSubscriptionCountedInSpend } from '../lib/reviewState'
 
 export const SubscriptionsContext = createContext(null)
 const DASHBOARD_CACHE_PREFIX = 'cushn_dashboard_cache'
@@ -65,7 +66,7 @@ export function SubscriptionsProvider({ children }) {
             const subs = await getSubscriptions(userId)
             if (refreshToken !== refreshTokenRef.current) return
             const total = subs
-                .filter((sub) => sub.status === 'active')
+                .filter((sub) => isSubscriptionCountedInSpend(sub))
                 .reduce((sum, sub) => sum + normalizeToMonthly(sub.amount, sub.cycle), 0)
             const cached = getDashboardCache(userId)
             setSubscriptions(subs)
@@ -132,9 +133,9 @@ export function SubscriptionsProvider({ children }) {
 
     // Group subscriptions by cycle
     const grouped = {
-        monthly: subscriptions.filter(s => s.status === 'active' && s.cycle === 'monthly'),
-        annual: subscriptions.filter(s => s.status === 'active' && (s.cycle === 'annual' || s.cycle === 'yearly')),
-        other: subscriptions.filter(s => s.status === 'active' && !['monthly', 'annual', 'yearly'].includes(s.cycle)),
+        monthly: subscriptions.filter(s => isSubscriptionCountedInSpend(s) && s.cycle === 'monthly'),
+        annual: subscriptions.filter(s => isSubscriptionCountedInSpend(s) && (s.cycle === 'annual' || s.cycle === 'yearly')),
+        other: subscriptions.filter(s => isSubscriptionCountedInSpend(s) && !['monthly', 'annual', 'yearly'].includes(s.cycle)),
         paused: subscriptions.filter(s => s.status === 'paused'),
     }
 
@@ -160,14 +161,14 @@ export function SubscriptionsProvider({ children }) {
 
     // Annual total projection
     const annualTotal = subscriptions
-        .filter(s => s.status === 'active')
+        .filter(s => isSubscriptionCountedInSpend(s))
         .reduce((sum, sub) => {
             return sum + normalizeToMonthly(sub.amount, sub.cycle) * 12
         }, 0)
 
     // Next renewal
     const nextRenewal = subscriptions
-        .filter(s => s.status === 'active' && s.renewalDate)
+        .filter(s => isSubscriptionCountedInSpend(s) && s.renewalDate)
         .sort((a, b) => new Date(a.renewalDate) - new Date(b.renewalDate))
         .find(s => daysUntilRenewal(s.renewalDate) >= 0)
 
@@ -191,7 +192,7 @@ export function SubscriptionsProvider({ children }) {
             setSubscriptions((prev) => {
                 const next = sortSubscriptionsByRenewalDate([...prev, ...inserted])
                 const nextTotal = next
-                    .filter((sub) => sub.status === 'active')
+                    .filter((sub) => isSubscriptionCountedInSpend(sub))
                     .reduce((sum, sub) => sum + normalizeToMonthly(sub.amount, sub.cycle), 0)
                 setMonthlyTotal(nextTotal)
                 saveDashboardCache(userId, {

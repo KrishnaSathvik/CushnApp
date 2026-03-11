@@ -1,3 +1,5 @@
+import { CATEGORY_DEFINITIONS, getBillTypeForCategoryName } from '../../shared/categoryModel.ts'
+
 // ─── App Constants ────────────────────────────────────────────────────────────
 // Single source of truth for all shared values used across the app.
 
@@ -22,32 +24,17 @@ export const EXAMPLE_INPUTS = [
 ]
 
 /** Default category definitions (name, color, icon) */
-export const DEFAULT_CATEGORIES = [
-    { name: 'Entertainment', color: '#F87171', icon: 'film', isDefault: true },
-    { name: 'Dev Tools', color: '#60A5FA', icon: 'code', isDefault: true },
-    { name: 'Health', color: '#34D399', icon: 'heart-pulse', isDefault: true },
-    { name: 'Productivity', color: '#0D9488', icon: 'lightbulb', isDefault: true },
-    { name: 'Cloud', color: '#A78BFA', icon: 'cloud', isDefault: true },
-    { name: 'News & Media', color: '#FBBF24', icon: 'newspaper', isDefault: true },
-    { name: 'Utilities', color: '#F97316', icon: 'zap', isDefault: true },
-    { name: 'Loans & Cards', color: '#A78BFA', icon: 'landmark', isDefault: true },
-    { name: 'Insurance', color: '#60A5FA', icon: 'shield', isDefault: true },
-    { name: 'Other', color: '#6B7280', icon: 'tag', isDefault: true },
-]
+export const DEFAULT_CATEGORIES = [...CATEGORY_DEFINITIONS]
 
 /** Bill Types derived implicitly from categories */
 export const BILL_TYPES = {
     subscription: { id: 'subscription', label: 'Subscription', color: '#0D9488', icon: 'plus-circle', shape: 'circle' },
     utility: { id: 'utility', label: 'Utility', color: '#F97316', icon: 'zap', shape: 'diamond' },
-    loan: { id: 'loan', label: 'Loans & Cards', color: '#A78BFA', icon: 'landmark', shape: 'square' },
+    loan: { id: 'loan', label: 'Debt & Loans', color: '#8B5CF6', icon: 'landmark', shape: 'square' },
     insurance: { id: 'insurance', label: 'Insurance', color: '#60A5FA', icon: 'shield', shape: 'shield' },
 }
 
 /** Helper to implicitly get bill type from category name */
 export function getBillTypeFromCategoryName(categoryName) {
-    const name = (categoryName || '').toLowerCase()
-    if (name.includes('utilit')) return BILL_TYPES.utility
-    if (name.includes('loan') || name.includes('card')) return BILL_TYPES.loan
-    if (name.includes('insurance')) return BILL_TYPES.insurance
-    return BILL_TYPES.subscription
+    return BILL_TYPES[getBillTypeForCategoryName(categoryName)] || BILL_TYPES.subscription
 }

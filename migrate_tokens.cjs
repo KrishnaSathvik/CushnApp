@@ -14,11 +14,11 @@ const replacements = {
     'T.glassStrong': 'T.bgGlassStrong',
     'T.glass': 'T.bgGlass',
     // Text
-    'T.white': 'T.fgHigh',
-    'text-white': 'text-fgHigh',
-    'T.gray1': 'T.fgMedium',
-    'T.gray2': 'T.fgMedium',
-    'T.gray3': 'T.fgSubtle',
+    'T.white': 'T.fgPrimary',
+    'text-white': 'text-fgPrimary',
+    'T.gray1': 'T.fgSecondary',
+    'T.gray2': 'T.fgSecondary',
+    'T.gray3': 'T.fgTertiary',
     'T.gray4': 'T.fgDivider',
     // Accents
     'T.accentLt': 'T.accentStrong',

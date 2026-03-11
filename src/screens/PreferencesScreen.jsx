@@ -33,14 +33,14 @@ function SettingToggle({
             border: `1px solid ${checked ? `${T.accentPrimary}33` : T.border}`,
           }}
         >
-          <Icon size={18} color={checked ? T.accentPrimary : T.fgMedium} />
+          <Icon size={18} color={checked ? T.accentPrimary : T.fgSecondary} />
         </div>
         <div className="flex flex-col flex-1">
           <div
             style={{
               fontSize: 15,
               fontWeight: 600,
-              color: T.fgHigh,
+              color: T.fgPrimary,
               lineHeight: 1.2,
             }}
           >
@@ -50,7 +50,7 @@ function SettingToggle({
             <div
               style={{
                 fontSize: 13,
-                color: T.fgSubtle,
+                color: T.fgTertiary,
                 marginTop: 4,
                 lineHeight: 1.4,
               }}
@@ -160,11 +160,11 @@ export default function PreferencesScreen() {
             className="interactive-btn w-10 h-10 -ml-2 rounded-full flex items-center justify-center cursor-pointer"
             style={{ background: "transparent", border: "none" }}
           >
-            <ArrowLeft size={24} color={T.fgHigh} />
+            <ArrowLeft size={24} color={T.fgPrimary} />
           </button>
           <div
             className="font-semibold text-[17px] tracking-tight"
-            style={{ color: T.fgHigh }}
+            style={{ color: T.fgPrimary }}
           >
             Manage Preferences
           </div>
@@ -198,10 +198,10 @@ export default function PreferencesScreen() {
             >
               Account
             </div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: T.fgHigh }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: T.fgPrimary }}>
               {session?.user?.email}
             </div>
-            <div style={{ fontSize: 13, color: T.fgMedium, marginTop: 4 }}>
+            <div style={{ fontSize: 13, color: T.fgSecondary, marginTop: 4 }}>
               Signed in via Supabase
             </div>
           </div>
@@ -214,7 +214,7 @@ export default function PreferencesScreen() {
             style={{
               fontSize: 13,
               fontWeight: 600,
-              color: T.fgMedium,
+              color: T.fgSecondary,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
             }}
@@ -244,7 +244,7 @@ export default function PreferencesScreen() {
           </div>
           <div
             className="px-3 mt-3"
-            style={{ fontSize: 12, color: T.fgSubtle, lineHeight: 1.5 }}
+            style={{ fontSize: 12, color: T.fgTertiary, lineHeight: 1.5 }}
           >
             Changes made here are saved instantly and sync across all your
             devices.
@@ -259,7 +259,7 @@ export default function PreferencesScreen() {
             className="px-4 py-3 rounded-xl shadow-lg flex items-center gap-2"
             style={{
               background: toast.type === "error" ? T.semDanger : T.bgElevated,
-              color: toast.type === "error" ? "#fff" : T.fgHigh,
+              color: toast.type === "error" ? "#fff" : T.fgPrimary,
               border: toast.type === "error" ? "none" : `1px solid ${T.border}`,
             }}
           >

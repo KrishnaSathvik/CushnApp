@@ -70,15 +70,18 @@ Each object must have:
     Hint: If the same charge appears ~12 times in a year-worth of data, it's monthly.
 
   category: Choose the BEST match from this exact list:
-    "Entertainment"   → streaming media, music, gaming, video, books
-    "Dev Tools"       → software dev tools, hosting, APIs, design tools (Figma, GitHub, AWS, Vercel)
-    "Health"          → gym, fitness apps, health/wellness, meditation
-    "Productivity"    → AI tools, task managers, project management, office suites (Notion, Slack, Zoom, OpenAI, Claude)
-    "Cloud"           → cloud storage, backup services (iCloud, Google One, Dropbox, OneDrive)
-    "News & Media"    → news sites, magazines, newsletters, podcasts (NYT, Substack, Economist)
-    "Utilities"       → internet, phone, electricity, gas, water, trash, TV/cable
-    "Loans"           → student loans, car payments, mortgage payments, credit card minimum payments
-    "Insurance"       → health, car, renters, homeowners, life insurance
+    "Entertainment"     → streaming media, music, gaming, video, books
+    "Productivity"      → AI tools, task managers, project management, office suites
+    "Dev Tools"         → software dev tools, hosting, APIs, design tools
+    "Cloud & Storage"   → cloud storage, backup services
+    "Debt & Loans"      → student loans, credit card payments, BNPL, debt servicing
+    "Utilities"         → internet, phone, electricity, gas, water, trash, TV/cable
+    "Health & Fitness"  → gym, fitness apps, wellness, meditation
+    "Insurance"         → health, car, renters, homeowners, life insurance
+    "News & Media"      → news sites, magazines, newsletters, podcasts
+    "Auto & Transport"  → car payments, tolls, parking, AAA, vehicle services
+    "Money Transfers"   → remittances and transfer services
+    "Shopping"          → retail memberships like Amazon Prime, Walmart+, Instacart+
     "Other"           → anything that doesn't clearly fit above
 
   renewalDate: The NEXT upcoming charge date in YYYY-MM-DD.

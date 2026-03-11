@@ -45,6 +45,11 @@ function mapSubFromSupabase(row) {
         vendorConfidence: row.vendor_confidence != null ? Number(row.vendor_confidence) : null,
         vendorMatchType: row.vendor_match_type,
         createdAt: row.created_at,
+        endsAt: row.ends_at,
+        cancelledAt: row.cancelled_at,
+        reviewedAt: row.reviewed_at,
+        snoozedUntil: row.snoozed_until,
+        cancelUrl: row.cancel_url,
     }
 }
 
@@ -65,6 +70,11 @@ function mapSubToSupabase(data, userId) {
     if (data.vendorDomain !== undefined) mapped.vendor_domain = data.vendorDomain
     if (data.vendorConfidence !== undefined) mapped.vendor_confidence = data.vendorConfidence
     if (data.vendorMatchType !== undefined) mapped.vendor_match_type = data.vendorMatchType
+    if (data.endsAt !== undefined) mapped.ends_at = data.endsAt
+    if (data.cancelledAt !== undefined) mapped.cancelled_at = data.cancelledAt
+    if (data.reviewedAt !== undefined) mapped.reviewed_at = data.reviewedAt
+    if (data.snoozedUntil !== undefined) mapped.snoozed_until = data.snoozedUntil
+    if (data.cancelUrl !== undefined) mapped.cancel_url = data.cancelUrl
     return mapped
 }
 

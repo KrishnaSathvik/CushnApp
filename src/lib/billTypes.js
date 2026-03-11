@@ -1,7 +1,9 @@
+import { getBillTypeForCategoryName } from '../../shared/categoryModel.ts'
+
 export const BILL_TYPES = {
     subscription: { id: 'subscription', label: 'Subscriptions', color: '#0D9488', icon: 'newspaper', shape: 'circle' },
     utility: { id: 'utility', label: 'Utilities', color: '#F97316', icon: 'zap', shape: 'diamond' },
-    loan: { id: 'loan', label: 'Loans & Cards', color: '#A78BFA', icon: 'landmark', shape: 'square' },
+    loan: { id: 'loan', label: 'Debt & Loans', color: '#8B5CF6', icon: 'landmark', shape: 'square' },
     insurance: { id: 'insurance', label: 'Insurance', color: '#60A5FA', icon: 'shield', shape: 'shield' },
 }
 
@@ -15,11 +17,7 @@ export function getBillTypeInfo(type) {
 }
 
 function inferBillTypeFromCategoryName(categoryName) {
-    const name = (categoryName || '').toLowerCase()
-    if (name.includes('utilit')) return 'utility'
-    if (name.includes('loan') || name.includes('card')) return 'loan'
-    if (name.includes('insurance')) return 'insurance'
-    return 'subscription'
+    return getBillTypeForCategoryName(categoryName)
 }
 
 function isValidBillType(type) {

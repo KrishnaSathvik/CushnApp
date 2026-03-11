@@ -1,17 +1,8 @@
+import { CATEGORY_NAMES, normalizeCategoryName } from './categoryModel.ts'
+
 export const ALLOWED_CYCLES = new Set(['monthly', 'annual', 'weekly', 'quarterly', 'biweekly'])
 
-export const ALLOWED_CATEGORIES = new Set([
-  'Entertainment',
-  'Dev Tools',
-  'Health',
-  'Productivity',
-  'Cloud',
-  'News & Media',
-  'Utilities',
-  'Loans & Cards',
-  'Insurance',
-  'Other',
-])
+export const ALLOWED_CATEGORIES = new Set(CATEGORY_NAMES)
 
 export function getBaseDate(currentDate?: string | null) {
   if (currentDate && /^\d{4}-\d{2}-\d{2}$/.test(currentDate)) {
@@ -34,11 +25,8 @@ export function normalizeCycle(value: unknown) {
 }
 
 export function normalizeCategory(value: unknown) {
-  const category = String(value || '').trim()
+  const category = normalizeCategoryName(value)
   if (ALLOWED_CATEGORIES.has(category)) return category
-  if (category === 'News') return 'News & Media'
-  if (category === 'Loans') return 'Loans & Cards'
-  if (category === 'Debt') return 'Loans & Cards'
   return 'Other'
 }
 

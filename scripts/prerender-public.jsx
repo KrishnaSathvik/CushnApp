@@ -8,7 +8,7 @@ import { getRouteSeo } from '../src/lib/seo.js'
 const DIST_DIR = path.resolve(process.cwd(), 'dist')
 const TEMPLATE_PATH = path.join(DIST_DIR, 'index.html')
 const SITE_URL = process.env.VITE_SITE_URL || 'https://cushn.app'
-const ROUTES = ['/', '/landing', '/privacy', '/terms', '/contact']
+const ROUTES = ['/', '/landing', '/audit', '/privacy', '/terms', '/contact']
 
 function upsertMetaTag(html, attrName, attrValue, content) {
   const pattern = new RegExp(`<meta[^>]*${attrName}=["']${attrValue}["'][^>]*>`, 'i')
@@ -30,13 +30,13 @@ function injectHead(html, seo) {
   let nextHtml = html.replace(/<title>.*?<\/title>/i, `<title>${seo.title}</title>`)
   nextHtml = upsertMetaTag(nextHtml, 'name', 'description', seo.description)
   nextHtml = upsertMetaTag(nextHtml, 'name', 'robots', seo.robots)
-  nextHtml = upsertMetaTag(nextHtml, 'property', 'og:title', seo.title)
+  nextHtml = upsertMetaTag(nextHtml, 'property', 'og:title', seo.socialTitle)
   nextHtml = upsertMetaTag(nextHtml, 'property', 'og:description', seo.description)
   nextHtml = upsertMetaTag(nextHtml, 'property', 'og:type', 'website')
   nextHtml = upsertMetaTag(nextHtml, 'property', 'og:url', seo.canonicalUrl)
   nextHtml = upsertMetaTag(nextHtml, 'property', 'og:image', seo.imageUrl)
   nextHtml = upsertMetaTag(nextHtml, 'name', 'twitter:card', 'summary_large_image')
-  nextHtml = upsertMetaTag(nextHtml, 'name', 'twitter:title', seo.title)
+  nextHtml = upsertMetaTag(nextHtml, 'name', 'twitter:title', seo.socialTitle)
   nextHtml = upsertMetaTag(nextHtml, 'name', 'twitter:description', seo.description)
   nextHtml = upsertMetaTag(nextHtml, 'name', 'twitter:image', seo.imageUrl)
   nextHtml = upsertCanonical(nextHtml, seo.canonicalUrl)

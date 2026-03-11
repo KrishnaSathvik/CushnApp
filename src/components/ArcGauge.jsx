@@ -71,9 +71,9 @@ export default function ArcGauge({ spent, budget, currency = 'USD', size = 160 }
                 y={cy - size * 0.04}
                 textAnchor="middle"
                 style={{
-                    fill: T.fgHigh,
+                    fill: T.fgPrimary,
                     fontSize: dynamicFontSize,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "var(--font-mono)",
                     fontWeight: 700,
                 }}
             >
@@ -84,9 +84,9 @@ export default function ArcGauge({ spent, budget, currency = 'USD', size = 160 }
                 y={cy + size * 0.08}
                 textAnchor="middle"
                 style={{
-                    fill: T.fgSubtle,
+                    fill: T.fgTertiary,
                     fontSize: Math.max(9, size * 0.05),
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "var(--font-mono)",
                 }}
             >
                 of {budgetText} budget
@@ -98,7 +98,7 @@ export default function ArcGauge({ spent, budget, currency = 'USD', size = 160 }
                 style={{
                     fill: color,
                     fontSize: Math.max(9, size * 0.05),
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "var(--font-mono)",
                     fontWeight: 700,
                 }}
             >

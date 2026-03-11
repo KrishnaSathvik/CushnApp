@@ -1,16 +1,24 @@
 const SITE_NAME = 'Cushn'
-const DEFAULT_DESCRIPTION = 'Your financial cushion against subscription creep with AI-powered tracking, reminders, budgets, and analytics.'
+const DEFAULT_DESCRIPTION = 'Find out what your subscriptions really cost. Cushn surfaces hidden spend, flags waste, and reminds you before renewals hit.'
+const DEFAULT_SOCIAL_TITLE = `${SITE_NAME} | Subscription intelligence that finds your waste`
 const DEFAULT_IMAGE = '/og-image.png'
 
 const PUBLIC_ROUTE_META = {
   '/': {
     title: `${SITE_NAME} | Your spending cushion`,
-    description: 'Paste messy subscription notes, upload statements, or talk naturally. Cushn uses AI to extract vendors, amounts, billing cadence, reminders, budgets, and analytics.',
+    socialTitle: DEFAULT_SOCIAL_TITLE,
+    description: DEFAULT_DESCRIPTION,
     robots: 'index,follow',
   },
   '/landing': {
     title: `${SITE_NAME} | Your spending cushion`,
-    description: 'Stop bleeding money on forgotten subscriptions with AI-powered tracking, renewal reminders, budget monitoring, and spending analytics.',
+    socialTitle: DEFAULT_SOCIAL_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    robots: 'index,follow',
+  },
+  '/audit': {
+    title: `Subscription Audit Calculator | ${SITE_NAME}`,
+    description: `Estimate your monthly, annual, and daily subscription spend with ${SITE_NAME}'s client-side audit calculator. No bank login required.`,
     robots: 'index,follow',
   },
   '/privacy': {
@@ -87,6 +95,7 @@ export function getRouteSeo(pathname, origin) {
   const routeMeta = PUBLIC_ROUTE_META[pathname] || {
     title: `${SITE_NAME} App`,
     description: DEFAULT_DESCRIPTION,
+    socialTitle: DEFAULT_SOCIAL_TITLE,
     robots: 'noindex,nofollow',
   }
 
@@ -96,6 +105,7 @@ export function getRouteSeo(pathname, origin) {
 
   return {
     ...routeMeta,
+    socialTitle: routeMeta.socialTitle || routeMeta.title,
     canonicalUrl,
     imageUrl,
   }
@@ -108,13 +118,13 @@ export function applyRouteSeo(pathname) {
   document.title = routeMeta.title
   upsertMeta('meta[name="description"]', { name: 'description', content: routeMeta.description })
   upsertMeta('meta[name="robots"]', { name: 'robots', content: routeMeta.robots })
-  upsertMeta('meta[property="og:title"]', { property: 'og:title', content: routeMeta.title })
+  upsertMeta('meta[property="og:title"]', { property: 'og:title', content: routeMeta.socialTitle })
   upsertMeta('meta[property="og:description"]', { property: 'og:description', content: routeMeta.description })
   upsertMeta('meta[property="og:type"]', { property: 'og:type', content: 'website' })
   upsertMeta('meta[property="og:url"]', { property: 'og:url', content: routeMeta.canonicalUrl })
   upsertMeta('meta[property="og:image"]', { property: 'og:image', content: routeMeta.imageUrl })
   upsertMeta('meta[name="twitter:card"]', { name: 'twitter:card', content: 'summary_large_image' })
-  upsertMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: routeMeta.title })
+  upsertMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: routeMeta.socialTitle })
   upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: routeMeta.description })
   upsertMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: routeMeta.imageUrl })
   upsertLink('canonical', routeMeta.canonicalUrl)

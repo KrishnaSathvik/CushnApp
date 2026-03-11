@@ -12,6 +12,7 @@ import { useTheme } from "./context/ThemeContext";
 import { SettingsProvider } from "./context/SettingsContext";
 import { SubscriptionsProvider } from "./context/SubscriptionsContext";
 import { BudgetProvider } from "./context/BudgetContext";
+import { ReviewSheetProvider } from "./context/ReviewSheetContext";
 import TabBar from "./components/TabBar";
 import SubscriptionDetail from "./screens/SubscriptionDetail";
 import DashboardHeader from "./components/DashboardHeader";
@@ -24,6 +25,7 @@ const AnalyticsScreen = lazy(() => import("./screens/AnalyticsScreen"));
 const BudgetScreen = lazy(() => import("./screens/BudgetScreen"));
 const CalendarScreen = lazy(() => import("./screens/CalendarScreen"));
 const SettingsScreen = lazy(() => import("./screens/SettingsScreen"));
+const SavingsHistoryScreen = lazy(() => import("./screens/SavingsHistoryScreen"));
 const OnboardingScreen = lazy(() => import("./screens/OnboardingScreen"));
 const LandingPage = lazy(() => import("./screens/LandingPage"));
 const GuestEntry = lazy(() => import("./screens/GuestEntry"));
@@ -38,8 +40,10 @@ const APP_ROUTES = [
   "/analytics",
   "/budget",
   "/calendar",
+  "/savings",
   "/settings",
 ];
+const DASHBOARD_HEADER_ROUTES = [...APP_ROUTES, "/preferences"];
 const ONBOARDED_KEY = "cushn_onboarded";
 const LEGACY_ONBOARDED_KEY = "subtrackr_onboarded";
 
@@ -170,7 +174,10 @@ function ScrollManager() {
 function AppShell() {
   const location = useLocation();
   const { isLoggedIn } = useAuth();
-  const showDashboardHeader = isLoggedIn && location.pathname !== "/onboarding";
+  const showDashboardHeader =
+    isLoggedIn &&
+    (DASHBOARD_HEADER_ROUTES.includes(location.pathname) ||
+      location.pathname.startsWith("/detail/"));
   const showTabBar = isLoggedIn && APP_ROUTES.includes(location.pathname);
 
   useEffect(() => {
@@ -178,7 +185,7 @@ function AppShell() {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-dvh bg-bgBase text-fgHigh">
+    <div className="min-h-dvh bg-bgBase text-fgPrimary">
       <ScrollManager />
       {showDashboardHeader && <DashboardHeader key={location.pathname} />}
       <main>
@@ -199,6 +206,7 @@ function AppShell() {
                 </PublicOnlyRoute>
               }
             />
+            <Route path="/audit" element={<Navigate to="/" replace />} />
             <Route
               path="/signup"
               element={
@@ -283,6 +291,14 @@ function AppShell() {
               }
             />
             <Route
+              path="/savings"
+              element={
+                <OnboardingGate>
+                  <SavingsHistoryScreen />
+                </OnboardingGate>
+              }
+            />
+            <Route
               path="/detail/:id"
               element={
                 <OnboardingGate>
@@ -329,9 +345,11 @@ export default function App() {
         <AuthProvider>
           <SettingsProvider>
             <SubscriptionsProvider>
-              <BudgetProvider>
-                <AppShell />
-              </BudgetProvider>
+              <ReviewSheetProvider>
+                <BudgetProvider>
+                  <AppShell />
+                </BudgetProvider>
+              </ReviewSheetProvider>
             </SubscriptionsProvider>
           </SettingsProvider>
         </AuthProvider>

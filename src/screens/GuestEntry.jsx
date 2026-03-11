@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   ArrowRight,
   Sparkles,
@@ -16,11 +16,14 @@ export default function GuestEntry() {
   const { T } = useTheme()
   const { loginAsGuest } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") ? redirectParam : "/add";
 
   const handleStart = async () => {
-    if (!name.trim()) return;
-    await loginAsGuest(name.trim());
-    navigate("/");
+    await loginAsGuest(name.trim() || "Guest");
+    navigate(redirectTo);
   };
 
   const handleKeyDown = (e) => {
@@ -28,10 +31,18 @@ export default function GuestEntry() {
   };
 
   return (
-    <AuthSplitLayout mode="signup">
+    <AuthSplitLayout
+      mode="signup"
+      blurb="Start in guest mode with local-first subscription tracking now, then create an account later if you want sync across devices."
+      valuePoints={[
+        "Keep everything local on this device to start",
+        "Create an account later to sync across devices",
+        "See your recurring spend before committing",
+      ]}
+    >
       <AuthPageHeader
         title="Continue in guest mode"
-        subtitle="Track subscriptions instantly with local storage, then create an account later if you want sync."
+        subtitle="See what your subscriptions are really costing with local storage now, then create an account later if you want sync."
       />
 
       <div className="motion-rise-in motion-delay-1 grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
@@ -48,7 +59,7 @@ export default function GuestEntry() {
               LOCAL-FIRST
             </span>
           </div>
-          <p className="text-[11px] leading-[1.5] m-0" style={{ color: T.fgMedium }}>
+          <p className="text-[11px] leading-[1.5] m-0" style={{ color: T.fgSecondary }}>
             Your guest data stays on this device.
           </p>
         </div>
@@ -65,7 +76,7 @@ export default function GuestEntry() {
               UPGRADE ANYTIME
             </span>
           </div>
-          <p className="text-[11px] leading-[1.5] m-0" style={{ color: T.fgMedium }}>
+          <p className="text-[11px] leading-[1.5] m-0" style={{ color: T.fgSecondary }}>
             Sign up later to sync across devices.
           </p>
         </div>
@@ -73,10 +84,9 @@ export default function GuestEntry() {
 
       <div className="motion-rise-in motion-delay-2" onKeyDown={handleKeyDown}>
         <Field
-          label="What should we call you?"
-          placeholder="Enter your name"
+          label="What should we call you? (Optional)"
+          placeholder="Guest"
           icon={User}
-          required
           value={name}
           onChange={setName}
         />
@@ -85,22 +95,21 @@ export default function GuestEntry() {
       {/* Start button */}
       <button
         onClick={() => void handleStart()}
-        disabled={!name.trim()}
         className="motion-rise-in motion-delay-3 interactive-btn interactive-btn-primary w-full h-12 rounded-xl flex items-center justify-center gap-2 font-bold text-[14px] mt-2 transition-all duration-200 cursor-pointer"
         style={{
-          background: name.trim() ? T.accentPrimary : T.fgDivider,
+          background: T.accentPrimary,
           border: "none",
           color: "#fff",
-          boxShadow: name.trim() ? `0 0 24px ${T.accentPrimary}44` : "none",
-          opacity: name.trim() ? 1 : 0.5,
-          cursor: name.trim() ? "pointer" : "default",
+          boxShadow: `0 0 24px ${T.accentPrimary}44`,
+          opacity: 1,
+          cursor: "pointer",
         }}
       >
-        <Sparkles size={16} /> Start tracking free <ArrowRight size={14} />
+        <Sparkles size={16} /> See what I am spending <ArrowRight size={14} />
       </button>
 
       <div className="motion-rise-in motion-delay-3 mt-8 text-center">
-        <span className="text-[13px]" style={{ color: T.fgSubtle }}>
+        <span className="text-[13px]" style={{ color: T.fgTertiary }}>
           Already have an account?{" "}
         </span>
         <Link

@@ -255,7 +255,7 @@ describe('parseWithClaude date normalization', () => {
                     name: 'Upstart Loan',
                     amount: 483,
                     cycle: 'monthly',
-                    category: 'Loans & Cards',
+                    category: 'Debt & Loans',
                     renewalDate: '2025-03-09',
                 }],
             }),
@@ -270,7 +270,7 @@ describe('parseWithClaude date normalization', () => {
             expect.objectContaining({
                 amount: 483,
                 cycle: 'monthly',
-                category: 'Loans & Cards',
+                category: 'Debt & Loans',
                 renewalDate: '2026-03-10',
             }),
         ])
@@ -448,7 +448,7 @@ describe('localParse fallback parsing', () => {
                 name: 'Gym',
                 amount: 49.99,
                 renewalDate: '2026-03-15',
-                category: 'Health',
+                category: 'Health & Fitness',
             }),
         ]))
     })
@@ -525,22 +525,22 @@ describe('localParse fallback parsing', () => {
             expect.objectContaining({
                 name: 'Apple Credit Card',
                 amount: 1000,
-                category: 'Loans & Cards',
+                category: 'Debt & Loans',
             }),
             expect.objectContaining({
                 name: 'Amex Credit Card',
                 amount: 500,
-                category: 'Loans & Cards',
+                category: 'Debt & Loans',
             }),
             expect.objectContaining({
                 name: 'Capital One Credit Card',
                 amount: 1000,
-                category: 'Loans & Cards',
+                category: 'Debt & Loans',
             }),
             expect.objectContaining({
                 name: 'Best Buy Credit Card',
                 amount: 100,
-                category: 'Loans & Cards',
+                category: 'Debt & Loans',
             }),
         ]))
     })
@@ -599,7 +599,7 @@ Charity and Transfers
             expect.objectContaining({
                 name: 'Apple Credit Card',
                 amount: 1000,
-                category: 'Loans & Cards',
+                category: 'Debt & Loans',
                 renewalDate: '2026-03-28',
             }),
             expect.objectContaining({
@@ -629,7 +629,7 @@ Charity and Transfers
             expect.objectContaining({
                 name: 'Google Drive',
                 amount: 15,
-                category: 'Cloud',
+                category: 'Cloud & Storage',
                 renewalDate: '2026-03-25',
             }),
             expect.objectContaining({
@@ -641,7 +641,7 @@ Charity and Transfers
             expect.objectContaining({
                 name: 'Car Payment',
                 amount: 400,
-                category: 'Loans & Cards',
+                category: 'Auto & Transport',
                 renewalDate: '2026-03-09',
             }),
             expect.objectContaining({
@@ -665,7 +665,7 @@ Charity and Transfers
             expect.objectContaining({
                 name: 'Upstart',
                 amount: 500,
-                category: 'Loans & Cards',
+                category: 'Debt & Loans',
                 renewalDate: '2026-03-11',
             }),
             expect.objectContaining({
@@ -705,9 +705,9 @@ describe('constants', () => {
         const names = DEFAULT_CATEGORIES.map(c => c.name)
         expect(names).toContain('Entertainment')
         expect(names).toContain('Dev Tools')
-        expect(names).toContain('Health')
+        expect(names).toContain('Health & Fitness')
         expect(names).toContain('Productivity')
-        expect(names).toContain('Cloud')
+        expect(names).toContain('Cloud & Storage')
         expect(names).toContain('News & Media')
         expect(names).toContain('Other')
     })

@@ -24,7 +24,7 @@ export default function TabBar() {
         <nav
             className="floating-dock md:hidden flex items-center gap-1"
             style={{
-                color: T.fgHigh,
+                color: T.fgPrimary,
             }}
         >
             {tabs.map((tab) => {
@@ -41,20 +41,20 @@ export default function TabBar() {
                                 ? undefined
                                 : 'transparent',
                             padding: '6px 0',
-                            color: isActive ? T.accentPrimary : T.fgSubtle,
+                            color: isActive ? T.accentPrimary : T.fgTertiary,
                         }}
                     >
                         <div className="flex flex-col items-center gap-0.5">
                             <Icon
                                 size={20}
-                                color={isActive ? T.accentPrimary : T.fgSubtle}
+                                color={isActive ? T.accentPrimary : T.fgTertiary}
                                 strokeWidth={isActive ? 2.2 : 1.8}
                                 className="transition-colors duration-200"
                             />
                             <span
                                 className="text-[10px] font-semibold tracking-[0.01em]"
                                 style={{
-                                    color: isActive ? T.accentPrimary : T.fgSubtle,
+                                    color: isActive ? T.accentPrimary : T.fgTertiary,
                                     opacity: isActive ? 1 : 0.92,
                                 }}
                             >

@@ -9,7 +9,15 @@ import {
     subscribeToCloudUserSettings,
 } from '../lib/userSettings'
 
-const ThemeContext = createContext(null)
+const defaultThemeContextValue = {
+    T: DARK,
+    theme: 'dark',
+    themePreference: 'dark',
+    setThemePreference: () => {},
+    isDark: true,
+}
+
+const ThemeContext = createContext(defaultThemeContextValue)
 const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)'
 
 function getStoredThemePreference() {
@@ -117,15 +125,15 @@ export function ThemeProvider({ children }) {
         // Apply data-theme attribute for CSS variable overrides
         document.documentElement.setAttribute('data-theme', activeTheme)
         document.documentElement.style.backgroundColor = T.bgBase
-        document.documentElement.style.color = T.fgHigh
+        document.documentElement.style.color = T.fgPrimary
         if (document.body) {
             document.body.style.backgroundColor = T.bgBase
-            document.body.style.color = T.fgHigh
+            document.body.style.color = T.fgPrimary
         }
         const themeColor = document.querySelector('meta[name="theme-color"]')
         if (themeColor) themeColor.setAttribute('content', T.bgBase)
         saveLocalUserSettings({ themePreference })
-    }, [activeTheme, themePreference, T.bgBase, T.fgHigh])
+    }, [activeTheme, themePreference, T.bgBase, T.fgPrimary])
 
     const updateThemePreference = (nextPreference) => {
         setThemePreference(nextPreference)
@@ -145,6 +153,5 @@ export function ThemeProvider({ children }) {
 
 export function useTheme() {
     const ctx = useContext(ThemeContext)
-    if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
     return ctx
 }
