@@ -1,9 +1,30 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Analytics } from '@vercel/analytics/react'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App'
 import { seedDefaults, db } from './db'
+
+const updateSW = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    updateSW(true)
+  },
+  onRegisteredSW(_swUrl, registration) {
+    if (!registration || typeof window === 'undefined') return
+
+    const triggerUpdate = () => {
+      if (document.visibilityState === 'visible') {
+        void registration.update()
+      }
+    }
+
+    window.addEventListener('focus', triggerUpdate)
+    document.addEventListener('visibilitychange', triggerUpdate)
+    window.setInterval(triggerUpdate, 60_000)
+  },
+})
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
