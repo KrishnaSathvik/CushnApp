@@ -1,21 +1,23 @@
 # Cushn
 
-Cushn is a React + Vite subscription tracker that helps you manage recurring expenses, whether you prefer a lightweight guest experience or a fully cloud-synced account.
+Cushn is an AI-powered subscription intelligence app that surfaces what you're really spending, flags waste, and reminds you before renewals hit. It works offline as a guest or syncs across devices with a cloud account.
+
+## 🧭 Product Philosophy
+
+Cushn is designed around one principle: stop showing people their data and start showing them what their data means. The landing page leads with an interactive audit calculator. The onboarding drops users into adding subscriptions immediately rather than configuring settings. Analytics surfaces actionable insights before charts. Every screen answers 'what should I do' not just 'what do I have.'
 
 ## ✨ Features
 
-- **Guest & Authenticated Modes:** Use the app locally with Dexie, track guest sessions in Supabase, or sign up to sync with a full cloud account.
-- **AI-Assisted Parsing:** Parse subscription details from typed text, screenshots, and statement uploads through a Supabase Edge Function.
-- **Smart Import/Export:** Upload PDF, CSV, XLSX, TXT, TSV, and image files into a review dialog before confirming findings; plus backup/restore and vendor-aware duplicate detection.
-- **Review Workflow:** A shared `ReviewSheet` lets users decide whether a subscription is worth keeping, cancel it externally, or snooze the decision for later.
-- **Scheduled Cancellation Tracking:** Cancellation decisions record `cancelledAt` and `endsAt`, keep spend active until the end date passes, and log savings once the cancellation becomes effective.
-- **Redesigned Analytics:** Analytics is organized into four zones: a headline insight, a visual breakdown, an interactive simulator, and a compact 6-month trend.
-- **Comprehensive Tracking:** Manage budgets, savings history, and renewal timing across Home, Analytics, Budget, Calendar, and subscription detail views.
-- **Realtime Sync:** Instantly sync subscriptions, categories, budgets, and in-app reminder events across devices.
-- **Notifications & Reminders:** Live in-app and email reminder delivery for upcoming renewals.
-- **Cloud Preferences:** Sync currency, theme preference, and bill-type mapping for authenticated users.
-- **Vendor Enrichment:** Persisted vendor metadata (domain, confidence, match type) for smarter categorization.
-- **Cancellation Link Mapping:** Common vendors map to known cancellation URLs, with a Google fallback for uncatalogued services.
+1. **AI-Assisted Parsing:** Parse subscription details from typed text, screenshots, and statement uploads through a Supabase Edge Function.
+2. **Review Workflow:** A shared `ReviewSheet` lets users decide whether a subscription is worth keeping, cancel it externally, or snooze the decision for later.
+3. **Redesigned Analytics:** Analytics is organized into four zones: a headline insight, a visual breakdown, an interactive simulator, and a compact 6-month trend.
+4. **Scheduled Cancellation Tracking:** Cancellation decisions record `cancelledAt` and `endsAt`, keep spend active until the end date passes, and log savings once the cancellation becomes effective.
+5. **Comprehensive Tracking:** Manage budgets, savings history, and renewal timing across Home, Analytics, Budget, Calendar, and subscription detail views.
+6. **Notifications & Reminders:** Live in-app and email reminder delivery for upcoming renewals.
+7. **Vendor Enrichment & Cancellation Link Mapping:** Persisted vendor metadata (domain, confidence, match type) for smarter categorization. Common vendors map to known cancellation URLs, with a Google fallback for uncatalogued services.
+8. **Smart Import/Export:** Upload PDF, CSV, XLSX, TXT, TSV, and image files into a review dialog before confirming findings; plus backup/restore and vendor-aware duplicate detection.
+9. **Guest & Authenticated Modes:** Use the app locally with Dexie, track guest sessions in Supabase, or sign up to sync with a full cloud account.
+10. **Realtime Sync & Cloud Preferences:** Instantly sync subscriptions, categories, budgets, and in-app reminder events across devices. Sync currency, theme preference, and bill-type mapping for authenticated users.
 
 ## 🛠️ Tech Stack
 
@@ -69,7 +71,7 @@ This app relies on Supabase for its backend. Depending on whether you are starti
 Run `supabase/final_setup.sql` in the Supabase SQL Editor.  
 *Why:* This is the current canonical schema. It includes core tables, reminder tables, indexes, RLS policies, realtime settings, and vendor metadata columns along with the `user_settings` structure.
 
-*(If you previously ran an older version of `final_setup.sql` before recent updates, apply these extensions: `20260305_email_reminders.sql`, `20260308_user_settings.sql`, `20260308_vendor_metadata.sql`, `20260309_guest_sessions.sql`, and `20260309_welcome_email_dispatches.sql` in that order).*
+*(If you previously ran an older version of `final_setup.sql` before recent updates, apply these extensions: `20260305_email_reminders.sql`, `20260308_user_settings.sql`, `20260308_vendor_metadata.sql`)*
 
 ### Existing Older Project
 If your database was initialized with the older `supabase/migration.sql`, run the following files in order:
@@ -87,7 +89,7 @@ After running migrations, strictly execute this verification script:
 ```bash
 supabase/verify_production_readiness.sql
 ```
-This query verifies essential requirements: required tables, RLS enablement, indexes, realtime publication membership, email reminder queue logic, authenticated cloud settings storage, pg_cron extension presence, and overall production readiness.
+This query verifies essential requirements: required tables, RLS enablement, indexes, realtime publication membership, email reminder queue logic, authenticated cloud settings storage, pg_cron extension and active jobs, etc.
 
 ### Subscription Review Fields
 The app now expects the following subscription fields in both local and cloud storage:
@@ -98,7 +100,7 @@ The app now expects the following subscription fields in both local and cloud st
 - `snoozedUntil`
 - `cancelUrl`
 
-These power scheduled cancellations, reviewed badges, reminder suppression, and vendor cancellation-link overrides. Dexie storage has been updated locally; make sure your Supabase `subscriptions` table includes matching columns (`ends_at`, `cancelled_at`, `reviewed_at`, `snoozed_until`, `cancel_url`) before using these flows in authenticated mode.
+These power scheduled cancellations, reviewed badges, reminder suppression, and vendor cancellation-link overrides. Dexie storage has been updated locally; make sure your Supabase `subscriptions` table includes these columns.
 
 ## ☁️ Edge Functions
 
@@ -148,7 +150,7 @@ The app architecture allows users to start locally and optionally transition to 
 - **Guests**: Complete onboarding, track subscriptions, configure settings, and use the app fully offline through local storage.
 - **Guest Session Tracking**: Guest entries create a `guest_sessions` record in Supabase with a display name and metadata, and that session is marked as converted if the guest later signs in.
 - **Migration**: When signing up, guest persistent data (subscriptions, categories, budget, notification preferences, themes, bill-types) automatically migrates to Supabase.
-- **Authenticated Cloud Sync**: Essential user data and profile configurations are saved and synced immediately. UI states temporarily persisting for the session (like installing a PWA banner) remain isolated on the device.
+- **Authenticated Cloud Sync**: Essential user data and profile configurations are saved and synced immediately. UI states temporarily persisting for the session (like installing a PWA banner) remain local-only.
 
 ## 🔍 Review & Cancellation Flow
 
